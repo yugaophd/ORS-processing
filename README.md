@@ -4,13 +4,13 @@ Create merged deep temperature for three ORS sites: Stratus, NTAS and WHOTS.
 
 # Architecture of the Code
 
-- `src/ORS2023_Process.py` is the main file.
-- `src/netcdf.py` and `src/plot.py` contain functions used in `ORS2023_Process.py`.
+- `src/ORS2024_Process.py` is the main file.
+- `src/netcdf.py` and `src/plot.py` contain functions used in `ORS2024_Process.py`.
 - `environment.yml` can be used to create a mamba/conda environment:
   ```bash
-  mamba env create -f environment.yml -n ORS_process
+  mamba env create -f environment.yml -n ors
   ```
-  This will create a new mamba environment named `ORS_process`.
+  This will create a new mamba environment named `ors`.
 
 ## Data Directory Structure
 
