@@ -1,1 +1,1 @@
-{"water_depth_from_mooring_diagram": 4450, "water_depth_from_recorder_reading": 4562.2, "corrected_water_depth": 4538.97, "instrument_depth_from_mooring_diagram": -999, "instrument_depth_from_mooring_log": -999, "instrument_height_above_bottom": 35}
+{"water_depth_from_mooring_diagram": 4450, "water_depth_from_ship_uncorrected": 4562.2, "water_depth_from_ship_corrected": 4538.97, "instrument_depth_from_mooring_diagram": -999, "instrument_depth_from_mooring_log": -999, "instrument_height_above_bottom": 35}

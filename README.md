@@ -2,6 +2,14 @@
 
 Create merged deep temperature for three ORS sites: Stratus, NTAS and WHOTS.
 
+## To-Do List
+
+- [ ] Refactor the `mat_to_xarray` function to handle metadata more gracefully.
+- [ ] Implement unit tests for data processing functions.
+- [ ] Optimize the data visualization module for larger datasets.
+- [ ] Update the documentation to include new visualization features.
+- [ ] Write a new script to filter out the T/S during deployment, keep the deep T/S data.
+
 # Architecture of the Code
 
 - `src/netcdf.py` contains functions for reading .mat files, incorporating metadata, converting to NetCDF format, and saving the output.
@@ -38,4 +46,32 @@ Once you've registered the ors environment as a kernel, restart Jupyter Lab. You
 ## Images Directory
 
 - `img/` will contain plots and other images used for data visualization.
+
+## Creating Metadata from MATLAB Files
+
+This repository provides a Python script to extract metadata from MATLAB files and convert it into a structured JSON format. Metadata extraction is essential for organizing and documenting scientific data, enabling better data management, sharing, and interoperability.
+
+### Step-by-Step Guide
+
+1. **Load MATLAB Files:**
+   Use the `scipy.io` library in Python to load MATLAB files into your Python environment. This library provides functions to read MATLAB files directly.
+
+2. **Extract Basic Information:**
+   Extract basic information such as latitude, longitude, and depth from the loaded MATLAB data using custom extraction functions.
+
+3. **Process Dimensions:**
+   Calculate dimensions for the dataset, including time, depth, latitude, and longitude.
+
+4. **Process Variables:**
+   Process variable metadata such as variable names, dimensions, data types, and attributes.
+
+5. **Process Attributes:**
+   Extract attributes such as geospatial information, time coverage, and resolution.
+
+6. **Create Final JSON Structure:**
+   Combine dimensions, variables, and attributes into a final JSON structure.
+
+This concise guide outlines the essential steps for creating metadata from MATLAB files using Python. Adjust and expand each step as needed for your project's requirements.
+
+### Usage
 

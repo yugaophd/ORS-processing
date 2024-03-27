@@ -3,7 +3,7 @@ from netcdf import read_mat_file, read_metadata_json, mat_to_xarray, save_to_net
 def process_dataset(mat_filepath, metadata_filepath, output_filepath):
     mat_data = read_mat_file(mat_filepath)
     metadata = read_metadata_json(metadata_filepath)
-    ds = mat_to_xarray(mat_data, metadata)
+    ds = mat_to_xarray(mat_data)
     save_to_netcdf(ds, output_filepath)
 
 if __name__ == "__main__":
