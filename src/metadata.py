@@ -1,5 +1,6 @@
 import numpy as np
 import json
+from datetime import datetime, timedelta
 
 def extract_basic_info(mat_data):
     """
@@ -12,152 +13,74 @@ def extract_basic_info(mat_data):
     }
     return basic_info
 
-def process_dimensions(mat_data):
-    """
-    Calculate dimensions for the dataset.
-    """
-    dimensions = {
-        'TIME': len(mat_data['mday']),  # Assuming mday represents time and is a 1D array
-        'DEPTH': 1,  # Assuming a single depth for simplicity; adjust if your data varies
-        'LATITUDE': 1,  # Fixed value for the dataset
-        'LONGITUDE': 1  # Fixed value for the dataset
-    }
-    return dimensions
 
-def process_variables(mat_data):
-    
-    '''prcess variable metadata'''
-    
-    variables_metadata = {
-        'TEMP': {
-            'dims': ('TIME', 'DEPTH'),
-            'data_type': 'float64',
-            'attrs': {
-                'long_name': 'Sea water temperature',
-                'units': 'degree_Celsius',
-                'reference_scale': 'ITS-90',
-                'valid_min': min(mat_data['temp']),
-                'valid_max': max(mat_data['temp']),
-                'QC_indicator': 1.0,
-                'QC_procedure': 6.0,
-                'instrument': 'SBE-16',
-                'comment': 'In-situ measurement, quality controlled'
-            }
-        },
-        'CNDC': {
-            'dims': ('TIME', 'DEPTH'),
-            'data_type': 'float64',
-            'attrs': {
-                'long_name': 'Sea water electrical conductivity',
-                'units': 'S m-1',
-                'valid_min': min(mat_data['cond']),
-                'valid_max': max(mat_data['cond']),
-                'QC_indicator': 1.0,
-                'instrument': 'SBE-16',
-                'comment': 'In-situ measurement, quality controlled'
-            }
-        },
-        'PSAL': {
-            'dims': ('TIME', 'DEPTH'),
-            'data_type': 'float64',
-            'attrs': {
-                'long_name': 'Sea water practical salinity',
-                'units': '1',
-                'valid_min': min(mat_data['sal']),
-                'valid_max': max(mat_data['sal']),
-                'QC_indicator': 1.0,
-                'instrument': 'SBE-16',
-                'comment': 'Computed from conductivity, quality controlled'
-            }
-        },
-        'sal_sbe': {
-            'dims': ('TIME', 'DEPTH'),
-            'data_type': 'float64',
-            'attrs': {
-                'long_name': 'Sea water salinity measured by SBE',
-                'units': '1',
-                'valid_min': min(mat_data['sal_sbe']),
-                'valid_max': max(mat_data['sal_sbe']),
-                'QC_indicator': 1.0,
-                'instrument': 'SBE-16',
-                'comment': 'Direct measurement by SBE, quality controlled'
-            }
-        }
-    }
-
-    # Adjust the above metadata as necessary for accuracy and completeness
-
-    return variables_metadata
-
-from datetime import datetime, timedelta
+def matlab_datenum_to_datetime(matlab_datenum):
+    """Convert MATLAB datenum to Python datetime."""
+    return datetime.fromordinal(int(matlab_datenum)) + timedelta(days=matlab_datenum % 1) - timedelta(days=366)
 
 def process_attributes_direct(mat_data):
+    """Process attributes directly from MATLAB data."""
     
-    # Convert MATLAB datenum to Python datetime
+    # Initialize an empty dict for attributes
+    attributes = {}
+    # meta data from matlab file
     
-    def matlab_datenum_to_datetime(matlab_datenum):
-        python_datetime = datetime.fromordinal(int(matlab_datenum)) + timedelta(days=matlab_datenum%1) - timedelta(days=366)
-        return python_datetime
+    meta = mat_data.get('meta', {})  # Fallback to empty dict if 'meta' does not exist
+    
+    # Extract the 'instrument' array from the provided 'meta' data
+    instrument_data = meta['instrument']
+    
+    if instrument_data is not None:
+        # Access the structured array within the numpy object array
+        try:
+            # Attempt to directly access the structured array
+            structured_array = instrument_data.item()
+            
+            # Iterate through each field in the structured array and add to attributes
+            for field in structured_array.dtype.names:
+                value = structured_array[field].item()
+                attributes[f'instrument_{field}'] = str(value)
+        except ValueError:
+            # Handle the case where .item() fails due to the structure not being as expected
+            print("Unexpected structure within 'instrument_data', cannot extract fields.")
 
-    meta = mat_data.get('meta')  # Using .get() to handle cases where 'meta' might not exist
-    
 
-    # Accessing structured data by field name
-    # If 'instrument' is a field within 'meta', you can access it directly
-    instrument_array = meta['instrument']
+    # Handle other direct values like latitude, longitude, depth, and time
+    latitude = mat_data.get('latitude', np.nan)
+    longitude = mat_data.get('longitude', np.nan)
+    depth = mat_data.get('depth', np.nan)
+    mday = mat_data.get('mday', np.array([]))
     
-    # Check if instrument_array is not None before converting to a dictionary
-    if instrument_array is not None:
-        # Convert the structured data to a list
-        instrument_structured_data = instrument_array.tolist() # Extracting structured data from the first element
-        instrument_list = instrument_structured_data.tolist()
-    
-        # Convert the list to a dictionary
-        instrument_info = dict(zip(instrument_structured_data.dtype.names, instrument_list))
-
-        # print(instrument_info)
+    # Convert mday to datetime, handling empty array scenario
+    if mday.size > 0:
+        start_datetime = matlab_datenum_to_datetime(mday[0])
+        end_datetime = matlab_datenum_to_datetime(mday[-1])
+        start_date_iso = start_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')
+        end_date_iso = end_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')
+        duration_days = (end_datetime - start_datetime).days
     else:
-        # print("Instrument information is not available.")
-        instrument_info = {'model': 'unknown', 'SN': 'unknown', 'manufacturer': 'unknown', 'reference': 'unknown', 'firmware_version': 'unknown', 'mount': 'unknown'}
+        start_date_iso = end_date_iso = 'unknown'
+        duration_days = 'unknown'
+        print("Warning: 'instrument' data not in expected format or not found.")
 
-    # Direct extraction of latitude, longitude, and time (mday) values
-    latitude = mat_data['latitude']
-    longitude = mat_data['longitude']
-    depth  = mat_data['depth']
-    mday = mat_data['mday']
-    
-    # Convert the first and last MATLAB datenum to Python datetime
-    start_datetime = matlab_datenum_to_datetime(mday[0])
-    end_datetime = matlab_datenum_to_datetime(mday[-1])
-
-    # Format start and end datetime to ISO format
-    start_date_iso = start_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')
-    end_date_iso = end_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')
-
-    # Calculate duration in days (approximation)
-    duration_days = (end_datetime - start_datetime).days
-    duration_iso = f'P{duration_days}D'
-
-    # Prepare the attributes dictionary
-    attributes = {
-        'instrument info': instrument_info,
+    # Update attributes with processed values
+    attributes.update({
         'geospatial_lat_min': latitude,
         'geospatial_lat_max': latitude,
         'geospatial_lon_min': longitude,
         'geospatial_lon_max': longitude,
-        'geospatial_lat_units': 'degrees_north',
-        'geospatial_lon_units': 'degrees_east',
-        'geospatial_vertical_min': depth,  # Assuming this is constant; adjust as necessary
-        'geospatial_vertical_max': depth,  # Assuming this is constant; adjust as necessary
-        'geospatial_vertical_units': 'meters',
-        'geospatial_vertical_positive': 'down',
+        'geospatial_vertical_min': depth,
+        'geospatial_vertical_max': depth,
         'time_coverage_start': start_date_iso,
         'time_coverage_end': end_date_iso,
-        'time_coverage_duration': duration_iso,
-        'time_coverage_resolution': 'PT1H',  # Assuming hourly resolution; adjust as necessary
-    }
+        'time_coverage_duration': f'P{duration_days}D',
+        'time_coverage_resolution': 'PT1H',  # Assuming hourly resolution
+    })
 
     return attributes
+
+
+
 
 def create_json(mat_data, depth_parameters):
     
