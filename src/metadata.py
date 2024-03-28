@@ -25,7 +25,9 @@ def process_dimensions(mat_data):
     return dimensions
 
 def process_variables(mat_data):
+    
     '''prcess variable metadata'''
+    
     variables_metadata = {
         'TEMP': {
             'dims': ('TIME', 'DEPTH'),
@@ -90,16 +92,40 @@ def process_variables(mat_data):
 from datetime import datetime, timedelta
 
 def process_attributes_direct(mat_data):
-# Convert MATLAB datenum to Python datetime
+    
+    # Convert MATLAB datenum to Python datetime
+    
     def matlab_datenum_to_datetime(matlab_datenum):
         python_datetime = datetime.fromordinal(int(matlab_datenum)) + timedelta(days=matlab_datenum%1) - timedelta(days=366)
         return python_datetime
 
+    meta = mat_data.get('meta')  # Using .get() to handle cases where 'meta' might not exist
+    
+
+    # Accessing structured data by field name
+    # If 'instrument' is a field within 'meta', you can access it directly
+    instrument_array = meta['instrument']
+    
+    # Check if instrument_array is not None before converting to a dictionary
+    if instrument_array is not None:
+        # Convert the structured data to a list
+        instrument_structured_data = instrument_array.tolist() # Extracting structured data from the first element
+        instrument_list = instrument_structured_data.tolist()
+    
+        # Convert the list to a dictionary
+        instrument_info = dict(zip(instrument_structured_data.dtype.names, instrument_list))
+
+        # print(instrument_info)
+    else:
+        # print("Instrument information is not available.")
+        instrument_info = {'model': 'unknown', 'SN': 'unknown', 'manufacturer': 'unknown', 'reference': 'unknown', 'firmware_version': 'unknown', 'mount': 'unknown'}
+
     # Direct extraction of latitude, longitude, and time (mday) values
     latitude = mat_data['latitude']
     longitude = mat_data['longitude']
+    depth  = mat_data['depth']
     mday = mat_data['mday']
-
+    
     # Convert the first and last MATLAB datenum to Python datetime
     start_datetime = matlab_datenum_to_datetime(mday[0])
     end_datetime = matlab_datenum_to_datetime(mday[-1])
@@ -114,14 +140,15 @@ def process_attributes_direct(mat_data):
 
     # Prepare the attributes dictionary
     attributes = {
+        'instrument info': instrument_info,
         'geospatial_lat_min': latitude,
         'geospatial_lat_max': latitude,
         'geospatial_lon_min': longitude,
         'geospatial_lon_max': longitude,
         'geospatial_lat_units': 'degrees_north',
         'geospatial_lon_units': 'degrees_east',
-        'geospatial_vertical_min': 0.78,  # Assuming this is constant; adjust as necessary
-        'geospatial_vertical_max': 70.0,  # Assuming this is constant; adjust as necessary
+        'geospatial_vertical_min': depth,  # Assuming this is constant; adjust as necessary
+        'geospatial_vertical_max': depth,  # Assuming this is constant; adjust as necessary
         'geospatial_vertical_units': 'meters',
         'geospatial_vertical_positive': 'down',
         'time_coverage_start': start_date_iso,
@@ -132,31 +159,37 @@ def process_attributes_direct(mat_data):
 
     return attributes
 
-def create_json(mat_data):
+def create_json(mat_data, depth_parameters):
+    
     """
-    Combines dimensions, variables, and attributes into a final JSON structure.
+    Combines dimensions, variables, attributes, and depth parameters into a final JSON structure.
 
     Args:
         mat_data: The MATLAB data loaded as a dictionary.
+        depth_parameters: A dictionary containing depth-related parameters.
 
     Returns:
-        A dictionary representing the final JSON structure.
+        A dictionary representing the final JSON structure, including depth parameters.
     """
+    
     # Process dimensions
-    dimensions = process_dimensions(mat_data)
+    # dimensions = process_dimensions(mat_data)
     
     # Process variables
-    variables = process_variables(mat_data)
+    # variables = process_variables(mat_data)
     
-    # Process attributes
+    # Process attributes (assuming this function already exists and extracts other relevant attributes)
     attributes = process_attributes_direct(mat_data)
 
     # Combine everything into a final structure
     final_structure = {
-        'dimensions': dimensions,
-        'variables': variables,
-        'attributes': attributes
+        # 'dimensions': dimensions,
+        # 'variables': variables,
+        'attributes': attributes,
+        'depth parameters': depth_parameters
     }
+
     
     return final_structure
+
 
