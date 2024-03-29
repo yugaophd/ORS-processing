@@ -1,86 +1,65 @@
-import numpy as np
-import json
 from datetime import datetime, timedelta
-
-def extract_basic_info(mat_data):
-    """
-    Extract basic information like latitude, longitude, etc.
-    """
-    basic_info = {
-        'latitude': mat_data.get('latitude', None),
-        'longitude': mat_data.get('longitude', None),
-        'depth': mat_data.get('depth', None)
-    }
-    return basic_info
-
+import numpy as np
 
 def matlab_datenum_to_datetime(matlab_datenum):
     """Convert MATLAB datenum to Python datetime."""
     return datetime.fromordinal(int(matlab_datenum)) + timedelta(days=matlab_datenum % 1) - timedelta(days=366)
 
 def process_attributes_direct(mat_data):
-    """Process attributes directly from MATLAB data."""
-    
-    # Initialize an empty dict for attributes
+    """Process attributes directly from MATLAB data, handling nested structures and direct attributes."""
     attributes = {}
-    # meta data from matlab file
-    
-    meta = mat_data.get('meta', {})  # Fallback to empty dict if 'meta' does not exist
-    
-    # Extract the 'instrument' array from the provided 'meta' data
-    instrument_data = meta['instrument']
-    
-    if instrument_data is not None:
-        # Access the structured array within the numpy object array
-        try:
-            # Attempt to directly access the structured array
-            structured_array = instrument_data.item()
-            
-            # Iterate through each field in the structured array and add to attributes
-            for field in structured_array.dtype.names:
-                value = structured_array[field].item()
-                attributes[f'instrument_{field}'] = str(value)
-        except ValueError:
-            # Handle the case where .item() fails due to the structure not being as expected
-            print("Unexpected structure within 'instrument_data', cannot extract fields.")
 
+    # Ensure 'meta' is available and has the expected structure
+    meta = mat_data.get('meta', None)
+    if meta is None or not isinstance(meta, np.ndarray):
+        print("No 'meta' data found or 'meta' is not in the expected format.")
+        return attributes
 
-    # Handle other direct values like latitude, longitude, depth, and time
+    # Direct keys to extract from 'meta'
+    direct_keys = ['site', 'deployment', 'experiment', 'principal_investigator', 'platform', 'global']
+
+    # Process structured array 'meta' to extract direct keys
+    try:
+        for name in direct_keys:
+            if name in meta.dtype.names:
+                # Direct attributes from 'meta'
+                attr_value = meta[name][()]
+                attributes[name] = attr_value if isinstance(attr_value, (int, float, str)) else str(attr_value)
+    except Exception as e:
+        print(f"Failed to process 'meta' for direct keys: {e}")
+
+    # Handle latitude, longitude, depth, and mday with existing logic
     latitude = mat_data.get('latitude', np.nan)
     longitude = mat_data.get('longitude', np.nan)
     depth = mat_data.get('depth', np.nan)
     mday = mat_data.get('mday', np.array([]))
-    
-    # Convert mday to datetime, handling empty array scenario
+
     if mday.size > 0:
         start_datetime = matlab_datenum_to_datetime(mday[0])
         end_datetime = matlab_datenum_to_datetime(mday[-1])
-        start_date_iso = start_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')
-        end_date_iso = end_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')
-        duration_days = (end_datetime - start_datetime).days
+        attributes['time_coverage_start'] = start_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')
+        attributes['time_coverage_end'] = end_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')
+        attributes['time_coverage_duration'] = f'P{(end_datetime - start_datetime).days}D'
     else:
-        start_date_iso = end_date_iso = 'unknown'
-        duration_days = 'unknown'
-        print("Warning: 'instrument' data not in expected format or not found.")
+        attributes['time_coverage_start'] = 'unknown'
+        attributes['time_coverage_end'] = 'unknown'
+        attributes['time_coverage_duration'] = 'unknown'
+        print("Warning: 'mday' data not in expected format or not found.")
 
-    # Update attributes with processed values
+    # Update geospatial and time coverage attributes directly
     attributes.update({
+        'latitude_anchor_survey':latitude,
+        'longitude_anchor_survey':longitude,
         'geospatial_lat_min': latitude,
         'geospatial_lat_max': latitude,
         'geospatial_lon_min': longitude,
         'geospatial_lon_max': longitude,
         'geospatial_vertical_min': depth,
         'geospatial_vertical_max': depth,
-        'time_coverage_start': start_date_iso,
-        'time_coverage_end': end_date_iso,
-        'time_coverage_duration': f'P{duration_days}D',
         'time_coverage_resolution': 'PT1H',  # Assuming hourly resolution
     })
 
     return attributes
-
-
-
 
 def create_json(mat_data, depth_parameters):
     
@@ -114,5 +93,3 @@ def create_json(mat_data, depth_parameters):
 
     
     return final_structure
-
-
