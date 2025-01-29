@@ -70,7 +70,7 @@ def truncate_valid_hourly_data(ds):
 
     # Combine criteria
     valid_criteria = valid_temp_range & valid_sal_range & valid_cond_range & \
-                     (temp_std < 1) & (sal_std < 0.5) & (cond_std < 0.2) & valid_duration
+                    (temp_std < 1) & (sal_std < 0.5) & (cond_std < 0.2) & valid_duration
 
     # Truncate data based on criteria
     truncated_ds = ds.where(valid_criteria, drop=True)
@@ -204,3 +204,97 @@ def process_attributes_direct(mat_data):
     return processed_attributes
 
 
+import xarray as xr
+
+def fill_or_create_variables(ds, variables, fill_value=np.nan):
+    """
+    Fill missing data or create non-existent variables in an xarray Dataset.
+
+    Parameters:
+    - ds (xr.Dataset): The xarray Dataset to modify.
+    - variables (list): A list of variable names to check and fill or create.
+    - fill_value (int or float): The value to use for filling or creating variables. Defaults to -999.
+
+    Returns:
+    - None: Modifies the dataset in-place.
+    """
+    for var in variables:
+        if var in ds.variables:
+            # Forward fill missing values
+            ds[var] = ds[var].ffill(dim='time', limit=None)
+            # Ensure there is an info attribute and append to it if it exists
+            if 'info' in ds[var].attrs:
+                ds[var].attrs['info'] += '; Forward filled missing values.'
+            else:
+                ds[var].attrs['info'] = 'Forward filled missing values.'
+        else:
+            # Create the variable with fill_value if it does not exist
+            ds[var] = xr.full_like(ds['temp'], fill_value, dtype=type(fill_value))  # Ensure type consistency
+            ds[var].attrs['info'] = f'Variable created with fill value {fill_value} due to non-existence'
+
+def create_subset_dataset(ds, variables, fill_value=-999):
+    """
+    Creates a new xarray Dataset containing only specified variables from the original dataset,
+    filling missing data or creating non-existent variables with a specified fill value.
+    The new dataset retains the structure, attributes, and coordinates of the original dataset.
+
+    Parameters:
+    - ds (xr.Dataset): The original xarray Dataset.
+    - variables (list): A list of variable names to include in the new dataset.
+    - fill_value (int or float): The value to use for filling or creating variables. Defaults to -999.
+
+    Returns:
+    - xr.Dataset: A new dataset containing the specified variables, with global attributes and coordinates preserved.
+    """
+    new_ds = xr.Dataset(attrs=ds.attrs)  # Start with a new dataset, copying global attributes
+    for var in variables:
+        if var in ds.data_vars:
+            # Forward fill missing values and copy over variable attributes and coordinates
+            new_var = ds[var].ffill(dim='time', limit=None)
+            new_var.attrs['info'] = 'Forward filled missing values.' if 'info' not in new_var.attrs else new_var.attrs['info'] + '; Forward filled missing values.'
+            new_ds[var] = new_var
+        else:
+            # Create the variable with fill_value if it does not exist in the original dataset
+            reference_var = next(iter(ds.data_vars))  # Use the first variable to copy dimensions and coordinates
+            new_ds[var] = xr.full_like(ds[reference_var], fill_value, dtype=type(fill_value))
+            new_ds[var].attrs['info'] = f'Variable created with fill value {fill_value} due to non-existence'
+
+    # Ensure that the new dataset has all necessary coordinates from the original dataset
+    for coord in ds.coords:
+        if coord not in new_ds.coords:
+            new_ds.coords[coord] = ds.coords[coord]
+
+    return new_ds
+
+def verify_spike_time(time_data, temperature_data, recorded_spike_time):
+    """
+    Verify if the deployment spike time in the given time series data matches the recorded spike time.
+
+    Parameters:
+        time_data (np.array): Array of cftime.DatetimeGregorian timestamps.
+        temperature_data (np.array): Corresponding temperature readings.
+        recorded_spike_time (cftime.DatetimeGregorian): The documented time of the deployment spike.
+
+    Returns:
+        None: Prints out the verification result and time difference.
+    """
+    # Calculate the time differences in minutes
+    time_differences = [abs((td - recorded_spike_time).total_seconds()) / 60.0 for td in time_data]
+
+    # Find the minimum time difference
+    min_time_difference = np.min(time_differences)
+
+    # # Check if the minimum offset is 5 minutes or less
+    # if min_time_difference <= 5:
+    #     print(f"The spike time matches the record. Minimum time difference: {min_time_difference:.2f} minutes")
+    # else:
+    #     print(f"The spike time does not match the record. Minimum time difference: {min_time_difference:.2f} minutes")
+
+    # Print extracted spike data for reference
+    print("recorded spike time", recorded_spike_time)
+    print("Time Data for Deployment Spike:", time_data)
+    print("Temperature Data for Deployment Spike:", temperature_data)
+    
+import re
+def extract_instrument_name(file_path):
+    return re.search(r'_sbe37_(\d+)', file_path).group(1)

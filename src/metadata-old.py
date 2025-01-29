@@ -1,14 +1,9 @@
 from datetime import datetime, timedelta
 import numpy as np
-import scipy.io
 
-def matlab_datenum_to_datetime(datenum):
+def matlab_datenum_to_datetime(matlab_datenum):
     """Convert MATLAB datenum to Python datetime."""
-    days = datenum % 1
-    hours = days % 1 * 24
-    minutes = hours % 1 * 60
-    seconds = minutes % 1 * 60
-    return datetime.fromordinal(int(datenum)) + timedelta(days=int(days), hours=int(hours), minutes=int(minutes), seconds=int(seconds)) - timedelta(days=366)
+    return datetime.fromordinal(int(matlab_datenum)) + timedelta(days=matlab_datenum % 1) - timedelta(days=366)
 
 def process_attributes_direct(mat_data):
     """Process attributes directly from MATLAB data, handling nested structures and direct attributes."""
@@ -20,35 +15,16 @@ def process_attributes_direct(mat_data):
         print("No 'meta' data found or 'meta' is not in the expected format.")
         return attributes
 
-    # Function to parse the 'global' attribute
-    def parse_global_attribute(global_str):
-        global_elements = global_str.strip("()").split(", ")
-        attributes['institution'] = global_elements[0].strip("'")
-        attributes['project'] = global_elements[1].strip("'")
-        # Extend this logic to handle all elements appropriately
-
-    # Function to parse the 'platform' attribute
-    def parse_platform_attribute(platform_str):
-        platform_elements = platform_str.strip("()").split(", ")
-        attributes['platform_type'] = platform_elements[0].strip("'")
-        attributes['platform_year'] = platform_elements[1].strip("'")
-        # Extend this logic to handle all elements appropriately
-
     # Direct keys to extract from 'meta'
-    direct_keys = ['site', 'deployment', 'experiment', 'principal_investigator']
+    direct_keys = ['site', 'deployment', 'experiment', 'principal_investigator', 'global', 'platform']
 
     # Process structured array 'meta' to extract direct keys
     try:
         for name in direct_keys:
             if name in meta.dtype.names:
+                # Direct attributes from 'meta'
                 attr_value = meta[name][()]
                 attributes[name] = attr_value if isinstance(attr_value, (int, float, str)) else str(attr_value)
-
-        # Handle 'global' and 'platform' with special parsing
-        if 'global' in meta.dtype.names:
-            parse_global_attribute(str(meta['global'][()]))
-        if 'platform' in meta.dtype.names:
-            parse_platform_attribute(str(meta['platform'][()]))
     except Exception as e:
         print(f"Failed to process 'meta' for direct keys: {e}")
 
@@ -72,8 +48,8 @@ def process_attributes_direct(mat_data):
 
     # Update geospatial and time coverage attributes directly
     attributes.update({
-        'latitude_anchor_survey': latitude,
-        'longitude_anchor_survey': longitude,
+        'latitude_anchor_survey':latitude,
+        'longitude_anchor_survey':longitude,
         'geospatial_lat_min': latitude,
         'geospatial_lat_max': latitude,
         'geospatial_lon_min': longitude,
@@ -84,21 +60,6 @@ def process_attributes_direct(mat_data):
     })
 
     return attributes
-
-def extract_detailed_metadata(meta):
-    detailed_metadata = {}
-    if hasattr(meta, 'dtype'):
-        for name in meta.dtype.names:
-            attr_value = getattr(meta, name)
-            if isinstance(attr_value, scipy.io.matlab.mio5_params.mat_struct):  # Check if it's another nested structure
-                # Recursively extract nested metadata
-                detailed_metadata[name] = extract_detailed_metadata(attr_value)
-            elif isinstance(attr_value, np.ndarray) and attr_value.size == 1:
-                detailed_metadata[name] = attr_value.item()
-            else:
-                detailed_metadata[name] = attr_value
-    return detailed_metadata
-
 
 def create_json(mat_data, depth_parameters):
     
