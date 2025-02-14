@@ -113,10 +113,6 @@ print(f'Plot saved as {plot_filename}')
 
 
 
-# %% save the cleaned data
-
-ds0.to_netcdf(f'{data_path}/{project_name}{project_number}_{instrument_SN}_cleaned.nc')
-ds1.to_netcdf(f'{data_path}/{project_name}{project_number}_{instrument_SN2}_cleaned.nc')
 
 # %%
 # human in the loop (HITL) to check the data quality
@@ -160,9 +156,25 @@ for var in variables:
 instrument_number1 = ds0.attrs.get('instrument_SN', 'unknown')  # Use the same for ds1 if it's the same instrument
 instrument_number2 = ds1.attrs.get('instrument_SN', 'unknown')
 
+# Add sensor stats to variables
+from qc_function import add_sensor_stats_to_variables
+import pandas as pd
+
+df1 = pd.DataFrame(sensor1_data)
+df2 = pd.DataFrame(sensor2_data)
+
+# Add sensor stats to variables
+ds0, ds1 = add_sensor_stats_to_variables(ds0, ds1, variables)
+
+# %% save the cleaned data
+
+ds0.to_netcdf(f'{data_path}/{project_name}{project_number}_{instrument_SN}_cleaned.nc')
+ds1.to_netcdf(f'{data_path}/{project_name}{project_number}_{instrument_SN2}_cleaned.nc')
+
 # Specify output directory, which can depend on your project structure
 output_dir = f'../doc/{project_name}/{project_number}'
 
 # Call the function to export LaTeX tables
 export_diff_stats(sensor1_data, sensor2_data, instrument_number1,instrument_number2, 
                     output_dir, project_name, project_number)
+# %%

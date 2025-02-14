@@ -137,7 +137,7 @@ if difference1.time.size > 0:
 # Copy attributes from the first dataset and prepare to modify them
 merged_dataset.attrs = ds0_merge.attrs.copy()
 
-# Data source is the second dataset
+# Data source is the new dataset to be merged
 ds_source = ds1_merge
 
 # append the merging point to the merged dataset
@@ -152,9 +152,7 @@ attrs_to_append = ['deployment', 'instrument_SN', 'instrument_model',
                     'platform_water_depth_m', 'platform_watch_circle_nm',
                     'platform_deck_height_cm', 'platform_anchor_times',
                     'platform_data_start_time',
-                    'platform_anchor_over_time', 
-                    'platform_anchor_release_time',
-                    ]
+                    'platform_anchor_over_time', ]
 
 # Append new values from the second dataset
 for attr in attrs_to_append:
@@ -175,6 +173,11 @@ for attr in attrs_to_delete:
 merged_dataset.attrs['time_coverage_start'] = pd.to_datetime(merged_dataset.time.min().values).strftime('%Y-%m-%dT%H:%M:%SZ')
 merged_dataset.attrs['time_coverage_end'] = pd.to_datetime(merged_dataset.time.max().values).strftime('%Y-%m-%dT%H:%M:%SZ')
 
+# %%
+# Append variable attributes from the source dataset to the merged dataset
+from util import append_variable_attributes
+
+merged_dataset = append_variable_attributes(ds_source, merged_dataset)
 merged_dataset.attrs
 
 #%%

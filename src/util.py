@@ -206,7 +206,7 @@ def process_attributes_direct(mat_data):
 
 import xarray as xr
 
-def fill_or_create_variables(ds, variables, fill_value=np.nan):
+def fill_or_create_variables(ds, variables, fill_value=-99999.0):
     """
     Fill missing data or create non-existent variables in an xarray Dataset.
 
@@ -231,8 +231,15 @@ def fill_or_create_variables(ds, variables, fill_value=np.nan):
             # Create the variable with fill_value if it does not exist
             ds[var] = xr.full_like(ds['temp'], fill_value, dtype=type(fill_value))  # Ensure type consistency
             ds[var].attrs['info'] = f'Variable created with fill value {fill_value} due to non-existence'
+        # Assign `_FillValue` in encoding
+        ds[var].encoding["_FillValue"] = fill_value
 
-def create_subset_dataset(ds, variables, fill_value=-999):
+        # explicitly set missing values in attributes
+        # ds[var].attrs["missing_value"] = fill_value  # Older convention
+        # ds[var].attrs["_FillValue"] = fill_value  # needed for compatibility
+
+
+def create_subset_dataset(ds, variables, fill_value=-99999.0):
     """
     Creates a new xarray Dataset containing only specified variables from the original dataset,
     filling missing data or creating non-existent variables with a specified fill value.
@@ -298,3 +305,56 @@ def verify_spike_time(time_data, temperature_data, recorded_spike_time):
 import re
 def extract_instrument_name(file_path):
     return re.search(r'_sbe37_(\d+)', file_path).group(1)
+
+## append variable attributes in the merged dataset
+
+def append_variable_attributes(ds_source, merged_dataset):
+    
+    """
+    Append variable attributes from the source dataset to the merged dataset.
+    Parameters:
+    - ds_source (xarray.Dataset): The source dataset containing the new attributes.
+    - ds_merge (xarray.Dataset): The merged dataset to which attributes will be appended.
+    - merged_dataset (xarray.Dataset): The final merged dataset.
+    """        
+    
+    variables = ['temp', 'cond', 'sal', 'abssal', 'press']
+
+    # List of statistical attributes to handle
+    stat_attrs = [
+        'std_single_sensor',
+        'std_sensor_diff',
+        'mean_sensor_diff'
+    ]
+
+    # List of comment attributes to preserve (not append)
+    comment_attrs = [
+        'std_single_sensor_comment',
+        'std_sensor_diff_comment',
+        'mean_sensor_diff_comment'
+    ]
+    # Store attributes before merging
+    stored_attrs = {}
+    for var in variables:
+        if var in merged_dataset:
+            stored_attrs[var] = {
+                attr:  merged_dataset[var].attrs[attr] 
+                for attr in stat_attrs 
+                if attr in  merged_dataset[var].attrs
+            }
+
+    # Append/restore attributes
+    for var in variables:
+        if var in stored_attrs and var in ds_source:
+            # Append statistical values
+            for attr in stat_attrs:
+                if attr in stored_attrs[var] and attr in ds_source[var].attrs:
+                    merged_dataset[var].attrs[attr] = f"{stored_attrs[var][attr]}, {ds_source[var].attrs[attr]}"
+            # # Preserve comments (take from either dataset)
+            # for comment in comment_attrs:
+            #     if comment in stored_attrs[var]:
+            #         merged_dataset[var].attrs[comment] = stored_attrs[var][comment]
+            #     elif comment in ds_merge[var].attrs:
+            #         merged_dataset[var].attrs[comment] = ds_source[var].attrs[comment]
+        
+    return merged_dataset

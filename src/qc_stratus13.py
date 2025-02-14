@@ -110,9 +110,6 @@ plot_filename = os.path.join(plot_path, f"{project_name}{project_number}_{instru
 plt.savefig(plot_filename)
 print(f'Plot saved as {plot_filename}')
 
-# %% save the cleaned data
-ds0.to_netcdf(f'{data_path}/{project_name}{project_number}_{instrument_SN}_cleaned.nc')
-ds1.to_netcdf(f'{data_path}/{project_name}{project_number}_{instrument_SN2}_cleaned.nc')
 
 # %%
 # human in the loop (HITL) to check the data quality
@@ -164,14 +161,6 @@ export_diff_stats(sensor1_data, sensor2_data, instrument_number1,instrument_numb
                     output_dir, project_name, project_number)
 
 # %%
-# additonal qc because the abnormal values at the end
-# open dataset
-instrument_SN = '1873'
-instrument_SN2 = '1875'
-ds0 = xr.open_dataset(f'{data_path}/{project_name}{project_number}_{instrument_SN}_cleaned.nc')
-ds1 = xr.open_dataset(f'{data_path}/{project_name}{project_number}_{instrument_SN2}_cleaned.nc')
-
-# %%
 # the last data point is abnormal
 ds0.temp[-10:].data
 
@@ -186,6 +175,14 @@ plt.plot(ds0.sal.time[-10:], ds0.sal[-10:], '*')
 # remove the last data point
 ds0 = ds0.isel(time=slice(0, -1))
 ds1 = ds1.isel(time=slice(0, -1))
+
+# %%
+# Add sensor stats to variables
+from qc_function import add_sensor_stats_to_variables
+
+# Add sensor stats to variables
+ds0, ds1 = add_sensor_stats_to_variables(ds0, ds1, variables)
+
 
 # %%
 # export the cleaned data

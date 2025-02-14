@@ -193,7 +193,17 @@ attrs_to_append = ['deployment', 'instrument_SN', 'instrument_model',
                     'platform_deck_height_cm', 'platform_anchor_times',
                     'platform_data_start_time', 'platform_data_end_time', 
                     'platform_anchor_over_time', 'platform_anchor_release_time',
-                    'platform_deployment_number']
+                    'platform_anchor_release_time',
+                    'sensor_mean_temp', 
+                    'sensor_mean_cond',
+                    'sensor_mean_sal',
+                    'sensor_mean_abssal',
+                    'sensor_mean_press',
+                    'sensor_std_temp', 
+                    'sensor_std_cond',
+                    'sensor_std_sal',
+                    'sensor_std_abssal',
+                    'sensor_std_press']
 
 # Append new values from the second dataset
 for attr in attrs_to_append:

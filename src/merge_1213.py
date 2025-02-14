@@ -37,6 +37,10 @@ ds0_instrument2 = xr.open_dataset(f'/Users/yugao/UOP/ORS-processing/data/process
 ds1_instrument1 = xr.open_dataset(f'/Users/yugao/UOP/ORS-processing/data/processed/{case_name1}/{case_name1}_{instrument1_1}_cleaned.nc')
 ds1_instrument2 = xr.open_dataset(f'/Users/yugao/UOP/ORS-processing/data/processed/{case_name1}/{case_name1}_{instrument1_2}_cleaned.nc')
 
+ds0_instrument1
+
+# %%
+
 # Determine overlap window and extend by 2 hours
 variable = 'temp'  # Specify variable to compare
 overlap_start = max(ds0_instrument1.time.min(), ds0_instrument2.time.min(), ds1_instrument1.time.min(), ds1_instrument2.time.min())
@@ -133,7 +137,8 @@ attrs_to_append = ['deployment', 'instrument_SN', 'instrument_model',
                     'platform_deck_height_cm', 'platform_anchor_times',
                     'platform_data_start_time', 
                     'platform_anchor_over_time', 
-                    'platform_anchor_release_time']
+                    # 'platform_anchor_release_time'
+                    ]
 
 # Append new values from the second dataset
 for attr in attrs_to_append:
@@ -142,13 +147,19 @@ for attr in attrs_to_append:
     merged_dataset.attrs[attr] = f"{existing}, {value}" if existing else value
 
 # Define attributes to be deleted
-attrs_to_delete = ['platform_deployment_number',
+attrs_to_delete = ['platform_deployment_number', 'platform_anchor_release_time',
     'platform_deployment_number', 'platform_data_end_time'
     'platform_duration', 'instrument_firmware_version', 'inputfileheader']
 
 # Perform deletions
 for attr in attrs_to_delete:
     merged_dataset.attrs.pop(attr, None)
+
+# %%
+# Append variable attributes from the source dataset to the merged dataset
+from util import append_variable_attributes
+
+merged_dataset = append_variable_attributes(ds_source, merged_dataset)
 
 # Update time attributes based on the time coverage of the merged dataset
 merged_dataset.attrs['time_coverage_start'] = pd.to_datetime(merged_dataset.time.min().values).strftime('%Y-%m-%dT%H:%M:%SZ')

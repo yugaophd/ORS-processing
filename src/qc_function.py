@@ -66,45 +66,6 @@ def compute_diff_stats(ds0, ds1, variables):
     
     return results
 
-# import os
-
-# def export_diff_stats(diff_stats, means, stds, instrument, output_dir='results'):
-#     # Ensure the output directory exists
-#     os.makedirs(output_dir, exist_ok=True)
-    
-#     # Export to text file
-#     with open(os.path.join(output_dir, 'diff_stats.txt'), 'w') as f:
-#         for var, (mean_diff, std_diff) in diff_stats.items():
-#             f.write(f"{var}:\n")
-#             f.write(f"  Mean: {means[var]:.6f}\n")
-#             f.write(f"  Standard Deviation: {stds[var]:.6f}\n")
-#             f.write(f"  Accuracy (mean difference): {mean_diff:.6f}\n")
-#             f.write(f"  Precision (std dev of difference): {std_diff:.6f}\n")
-#             f.write(f"  QC Threshold (3 * std dev): {3*std_diff:.6f}\n")
-#             f.write("\n")
-
-#     # Export to LaTeX table
-#     with open(os.path.join(output_dir, f'diff_stats_table_{instrument}.tex'), 'w') as f:
-#         f.write("\\begin{table}[h]\n")
-#         f.write("\\centering\n")
-#         f.write("\\begin{tabular}{|l|r|r|r|r|r|}\n")
-#         f.write("\\hline\n")
-#         f.write("Variable & Mean & Std Dev & Mean Difference & Std difference & QC Threshold \\\\ \n")
-#         f.write("\\hline\n")
-#         for var, (mean_diff, std_diff) in diff_stats.items():
-#             f.write(f"{var} & {means[var]:.6f} & {stds[var]:.6f} & {mean_diff:.6f} & {std_diff:.6f} & {2*std_diff:.6f} \\\\ \n")
-#         f.write("\\hline\n")
-#         f.write("\\end{tabular}\n")
-#         f.write(f"\\caption{{Comprehensive Statistical Analysis for Instrument {instrument}. "
-#             "Mean and Std Dev represent the average and standard deviation of the measurements. "
-#             "Accuracy shows the mean difference between instruments (systematic bias). "
-#             "Precision indicates the standard deviation of differences (random variability). "
-#             "QC Threshold is set at 3 times the precision value for outlier detection.}}\n")
-#         # f.write(f"\\label{"diff_stats_{instrument}}\n")
-#         f.write("\\end{table}\n")
-
-#     print(f"Results exported to {output_dir}/diff_stats.txt and {output_dir}/diff_stats_table_{instrument}.tex")
-
 import pandas as pd
 import os
 
@@ -218,3 +179,107 @@ def create_hitl_catalog(original_ds, qc_ds, deployment_id, instrument_number, ou
     plt.tight_layout()
     plt.savefig(f"{output_dir}/{deployment_id}_{instrument_number}_hitl_catalog.png", dpi=300, bbox_inches='tight')
     plt.close()
+
+import pandas as pd
+import xarray as xr
+
+def add_sensor_stats_to_variables(ds0, ds1, variables):
+    
+    """
+    Add sensor statistics as attributes to specific variables in the datasets
+    """
+    
+    for var in variables:
+        # if var in df1.columns and var in df2.columns:
+        print(f"Processing variable: {var}")
+        # Calculate standard deviation for each sensor
+        if var in ds0 and var in ds1:
+            # Calculate statistics
+            std0 = float(ds0[var].std())
+            std1 = float(ds1[var].std())
+            combined_std = float((std0**2 + std1**2)**0.5)
+            mean_diff = float((ds0[var] - ds1[var]).mean())
+            
+            # Add attributes to ds0
+            if var in ds0:
+                ds0[var].attrs['std_single_sensor'] = std0
+                ds0[var].attrs['std_single_sensor_comment'] = "Standard deviation of the time series obtained from a single sensor during the deployment."
+                ds0[var].attrs['std_sensor_diff'] = combined_std
+                ds0[var].attrs['std_sensor_diff_comment'] = "Standard deviation of the difference between two co-located sensors during the deployment."
+                ds0[var].attrs['mean_sensor_diff'] = mean_diff
+                ds0[var].attrs['mean_sensor_diff_comment'] = "Mean of the difference between two co-located sensors during the deployment."
+            
+            # Add attributes to ds1
+            if var in ds1:
+                ds1[var].attrs['std_single_sensor'] = std1
+                ds1[var].attrs['std_single_sensor_comment'] = "Standard deviation of the time series obtained from a single sensor during the deployment."
+                ds1[var].attrs['std_sensor_diff'] = combined_std
+                ds1[var].attrs['std_sensor_diff_comment'] = "Standard deviation of the difference between two co-located sensors during the deployment."
+                ds1[var].attrs['mean_sensor_diff'] = mean_diff
+                ds1[var].attrs['mean_sensor_diff_comment'] = "Mean of the difference between two co-located sensors during the deployment."
+    
+    return ds0, ds1
+
+def standardize_ocean_variables(ds):
+    """
+    Standardize oceanographic variable names and attributes following OceanSITES and CF conventions.
+    
+    Parameters
+    ----------
+    ds : xarray.Dataset
+        Input dataset with original variable names
+        
+    Returns
+    -------
+    xarray.Dataset
+        Dataset with standardized variable names and attributes
+    """
+    # Dictionary mapping original names to standard names and attributes
+    var_standards = {
+        'cond': {
+            'name': 'CNDC',
+            'standard_name': 'sea_water_electrical_conductivity',
+            'units': 'S/m'
+        },
+        'sal': {
+            'name': 'PSAL',
+            'standard_name': 'sea_water_practical_salinity',
+            'units': '1'
+        },
+        'temp': {
+            'name': 'TEMP',
+            'standard_name': 'sea_water_temperature',
+            'units': 'degC'
+        },
+        'abssal': {
+            'name': 'ASAL',
+            'standard_name': 'sea_water_absolute_salinity',
+            'units': 'g/kg'
+        },
+        'press': {
+            'name': 'PRES',
+            'standard_name': 'sea_water_pressure',
+            'units': 'dbar'
+        }
+    }
+    
+    # Create a copy of the dataset to avoid modifying the original
+    ds_standard = ds.copy()
+    
+    # Rename variables and add attributes
+    rename_dict = {}
+    for old_name, standards in var_standards.items():
+        if old_name in ds:
+            rename_dict[old_name] = standards['name']
+    
+    # Perform renaming
+    ds_standard = ds_standard.rename(rename_dict)
+    
+    # Add attributes
+    for old_name, standards in var_standards.items():
+        if old_name in ds:
+            new_name = standards['name']
+            ds_standard[new_name].attrs['standard_name'] = standards['standard_name']
+            ds_standard[new_name].attrs['units'] = standards['units']
+    
+    return ds_standard

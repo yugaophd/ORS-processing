@@ -28,6 +28,8 @@ water_depth_from_ship_uncorrected = 4541     # uncorrected water depth, depth re
 water_depth_from_ship_corrected = 4541       # corrected water depth, best water depth
 instrument_height_above_bottom =  39   
 
+# water depth from ship corrected - instrument height above bottom
+
 #  Anchor (1) + chain (5) + nystron (20) + chain (5) + releases (1) + chain (5) 
 # + 6 terminations at 0.25 ea (1.5)            
 # + distance from termination on SBE cage to sensor (0.5) = 39 m
@@ -215,18 +217,18 @@ for i, var in enumerate(variables):
     if var in truncated_ds.variables:
         print(f'plotting {var} 1')
         time_data = convert_cftime_to_matplotlib(truncated_ds[var].time.values)
-        axs[i].plot(time_data, truncated_ds[var].values, 
+        axs[i].plot(time_data, truncated_ds[var], 
                     label=f'{var} (SBE {instrument_SN})', color=colors[i])
     
     if var in truncated_ds2.variables:
         print(f'plotting {var} 2')
         time_data2 = convert_cftime_to_matplotlib(truncated_ds2[var].time.values)
-        axs[i].plot(time_data2, truncated_ds2[var].values, 
+        axs[i].plot(time_data2, truncated_ds2[var], 
                     label=f'{var} (SBE {instrument_SN2})', color=colors2[i])
     
     if var in truncated_ds.variables and var in truncated_ds2.variables:
         print(f'plotting {var} correlation')
-        correlation = np.corrcoef(truncated_ds[var].values, truncated_ds2[var].values)[0, 1]
+        correlation = np.corrcoef(truncated_ds[var], truncated_ds2[var])[0, 1]
         axs[i].legend(title=f'Correlation: {correlation:.2f}')
     else:
         axs[i].legend()

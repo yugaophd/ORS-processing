@@ -34,6 +34,11 @@ print(files)
 ds0 = xr.open_dataset(files[0])
 ds1 = xr.open_dataset(files[1])
 
+# # %% rename the variables
+# from qc_function import standardize_ocean_variables
+# ds0 = standardize_ocean_variables(ds0)
+# ds1 = standardize_ocean_variables(ds1)
+
 # %%
 # Apply spike removal to each variable
 
@@ -112,12 +117,6 @@ plt.savefig(plot_filename)
 print(f'Plot saved as {plot_filename}')
 
 
-
-# %% save the cleaned data
-
-ds0.to_netcdf(f'{data_path}/{project_name}{project_number}_{instrument_SN}_cleaned.nc')
-ds1.to_netcdf(f'{data_path}/{project_name}{project_number}_{instrument_SN2}_cleaned.nc')
-
 # %%
 # human in the loop (HITL) to check the data quality
 # open dataset
@@ -133,8 +132,7 @@ create_hitl_catalog(ds1_original, ds1, case_name, instrument_SN2)
 
 # %%
 # Compute the difference statistics
-
-from qc_function import export_diff_stats, compute_diff_stats
+from qc_function import export_diff_stats
 
 # Compute the mean and standard deviation of the difference between the two datasets
 # Example dataset setup (assuming ds0 and ds1 are your xarray datasets)
@@ -149,9 +147,6 @@ for var in variables:
     if var in ds0:
         sensor1_data['mean'][var] = float(ds0[var].mean().values)  # Ensure conversion to standard Python float
         sensor1_data['std'][var] = float(ds0[var].std().values)
-
-# Collect data for sensor 2 (ds1)
-for var in variables:
     if var in ds1:
         sensor2_data['mean'][var] = float(ds1[var].mean().values)
         sensor2_data['std'][var] = float(ds1[var].std().values)
@@ -160,28 +155,19 @@ for var in variables:
 instrument_number1 = ds0.attrs.get('instrument_SN', 'unknown')  # Use the same for ds1 if it's the same instrument
 instrument_number2 = ds1.attrs.get('instrument_SN', 'unknown')
 
-# Store mean and std separately as attributes without JSON
-for var, value in sensor1_data["mean"]["sensor1"].items():
-    ds0.attrs[f"sensor_mean_{var}"] = value
-for var, value in sensor1_data["std"]["sensor1"].items():
-    ds0.attrs[f"sensor_std_{var}"] = value
+# %%
+# Add sensor stats to variables
+from qc_function import add_sensor_stats_to_variables
 
-for var, value in sensor2_data["mean"]["sensor2"].items():
-    ds1.attrs[f"sensor_mean_{var}"] = value
-for var, value in sensor2_data["std"]["sensor2"].items():
-    ds1.attrs[f"sensor_std_{var}"] = value
+# Add sensor stats to variables
+ds0, ds1 = add_sensor_stats_to_variables(ds0, ds1, variables)
 
-# Store metadata
-ds0.attrs.update({
-    "instrument_SN": instrument_number1,
-    "error_characterization_info": "Mean and standard deviation stored as separate attributes."
-})
+# %% save the cleaned data
 
-ds1.attrs.update({
-    "instrument_SN": instrument_number2,
-    "error_characterization_info": "Mean and standard deviation stored as separate attributes."
-})
+ds0.to_netcdf(f'{data_path}/{project_name}{project_number}_{instrument_SN}_cleaned.nc')
+ds1.to_netcdf(f'{data_path}/{project_name}{project_number}_{instrument_SN2}_cleaned.nc')
 
+# %%
 # Specify output directory, which can depend on your project structure
 output_dir = f'../doc/{project_name}/{project_number}'
 
