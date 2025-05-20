@@ -77,8 +77,11 @@ def export_diff_stats(sensor1_data, sensor2_data, instrument_number1, instrument
     Parameters:
         sensor1_data (dict): Dictionary containing data for sensor 1 (mean, std).
         sensor2_data (dict): Dictionary containing data for sensor 2 (mean, std).
-        instrument (str): Identifier for the instrument.
+        instrument_number1 (str): Identifier for the first instrument.
+        instrument_number2 (str): Identifier for the second instrument.
         output_dir (str): Directory path to save the LaTeX files.
+        project_name (str): Name of the project.
+        project_number (str): Number of the project.
     """
     # Ensure the output directory exists
     os.makedirs(output_dir, exist_ok=True)
@@ -92,6 +95,13 @@ def export_diff_stats(sensor1_data, sensor2_data, instrument_number1, instrument
     diff_stds = (df1['std']**2 + df2['std']**2)**0.5  # Combined standard deviation
     qc_threshold = 3 * diff_stds  # Quality control threshold
 
+    # Function to escape underscores for LaTeX
+    def escape_latex(text):
+        """Replace underscores in text with escaped underscores for LaTeX"""
+        if isinstance(text, str):
+            return text.replace('_', '\\_')
+        return text
+
     # Prepare LaTeX output
     tex_path = os.path.join(output_dir, f'diff_stats.tex')
     with open(tex_path, 'w') as f:
@@ -102,7 +112,9 @@ def export_diff_stats(sensor1_data, sensor2_data, instrument_number1, instrument
 
         f.write("& Mean & Std Dev & Mean & Std Dev \\\\\n\\hline\n")
         for var in df1.index:
-            f.write(f"{var} & {df1.at[var, 'mean']:.5f} & {df1.at[var, 'std']:.5f} & {df2.at[var, 'mean']:.5f} & {df2.at[var, 'std']:.5f} \\\\\n")
+            # Escape underscores in variable names
+            escaped_var = escape_latex(var)
+            f.write(f"{escaped_var} & {df1.at[var, 'mean']:.5f} & {df1.at[var, 'std']:.5f} & {df2.at[var, 'mean']:.5f} & {df2.at[var, 'std']:.5f} \\\\\n")
         f.write("\\hline\n\\end{tabular}\n")
         f.write(f"\\caption{{Statistics for individual sensors on {project_name} {project_number}}}\n")
 
@@ -113,20 +125,18 @@ def export_diff_stats(sensor1_data, sensor2_data, instrument_number1, instrument
         f.write("\\begin{tabular}{|c|c|c|c|}\n\\hline\n")
         f.write("Variable & Mean Diff & Std Diff & QC Threshold \\\\\n\\hline\n")
         for var in diff_means.index:
-            f.write(f"{var} & {diff_means[var]:.5f} & {diff_stds[var]:.5f} & {qc_threshold[var]:.5f} \\\\\n")
+            # Escape underscores in variable names
+            escaped_var = escape_latex(var)
+            f.write(f"{escaped_var} & {diff_means[var]:.5f} & {diff_stds[var]:.5f} & {qc_threshold[var]:.5f} \\\\\n")
         f.write("\\hline\n\\end{tabular}\n")
-        # f.write(f"\\caption{{Difference statistics for the two sensors on {project_name} {project_number}. 
-        #         The mean difference between instruments is a measure of expected accuracy (systematic bias). 
-        #         The standard deviation of the difference is a measure of precision (random variability). 
-        #         The QC Threshold is set at 3 times the precision value for outlier detection.}}\n")
+        
         f.write(
-        f"\\caption{{Difference statistics for the two sensors on {project_name} {project_number}. The mean difference between instruments is a measure of expected accuracy (systematic bias). The standard deviation of the difference is a measure of precision (random variability). The QC Threshold is set at 3 times the precision value for outlier detection.}}\n"
-)
+        f"\\caption{{Statistics for difference between sensors on {project_name} {project_number}}}\n"
+        )
 
         f.write("\\end{table}\n")
     
     print(f"LaTeX tables exported to {tex_path}")
-
 
 import matplotlib.pyplot as plt
 import xarray as xr
@@ -142,7 +152,11 @@ def create_hitl_catalog(original_ds, qc_ds, deployment_id, instrument_number, ou
     - deployment_id: string identifier for the deployment
     - output_dir: directory to save the plots
     """
-    variables = ['temp', 'sal', 'abssal', 'cond', 'press']
+    variables = ['sea_water_temperature', 
+            'sea_water_practical_salinity', 
+            'sea_water_absolute_salinity', 
+            'sea_water_electrical_conductivity', 
+            'sea_water_pressure']
     
     fig, axs = plt.subplots(5, 1, figsize=(15, 25))
     fig.suptitle(f"Deployment {deployment_id}: Original vs QC Data", fontsize=16)
@@ -195,10 +209,10 @@ def add_sensor_stats_to_variables(ds0, ds1, variables):
         # Calculate standard deviation for each sensor
         if var in ds0 and var in ds1:
             # Calculate statistics
-            std0 = float(ds0[var].std())
-            std1 = float(ds1[var].std())
-            combined_std = float((std0**2 + std1**2)**0.5)
-            mean_diff = float((ds0[var] - ds1[var]).mean())
+            std0 = float(np.round(ds0[var].std().values, 4))
+            std1 = float(np.round(ds1[var].std().values, 4))
+            combined_std = float(np.round((std0**2 + std1**2)**0.5, 4))
+            mean_diff = float(np.round((ds0[var] - ds1[var]).mean().values, 4))
             
             # Add attributes to ds0
             if var in ds0:

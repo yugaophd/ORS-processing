@@ -1,0 +1,38 @@
+{
+  "case_name": "stratus15",
+  "instruments": [
+    {
+      "serial_number": "11394",
+      "mat_file": "/Users/Shared/ORS/Stratus/stratus15/data/sbe37/stratus15_sbe37_11394.mat",
+      "height_above_bottom": 39
+    },
+    {
+      "serial_number": "12257",
+      "mat_file": "/Users/Shared/ORS/Stratus/stratus15/data/sbe37/stratus15_sbe37_12257.mat",
+      "height_above_bottom": 39
+    }
+  ],
+  "water_depth": {
+    "from_ship_uncorrected": 4600,
+    "from_ship_corrected": 4565,
+    "from_mooring_diagram": 4540
+  },
+  "deployment_spike_times": {
+    "start": "2016-06-12 17:29:00",
+    "end": "2016-06-12 19:00:00"
+  },
+  "recovery_spike_times": {
+    "start": "2017-05-14 17:06:00",
+    "end": "2017-05-14 18:31:00"
+  },
+  "processing_params": {
+    "truncation_hours_after_deployment": 4,
+    "use_release_time_for_truncation": true,
+    "default_fill_value": -99999.0
+  },
+  "time_attribute_keys": {
+    "anchor_over_time": "platform_anchor_over_time",
+    "release_fired_time": "platform_anchor_release_time",
+    "data_start_time": "platform_data_start_time"
+  }
+}
