@@ -1,7 +1,7 @@
 # %%
 # merge stratus 12 to stratus 15
-# stratus 14-10600 was chosen for closer match  with stratus 15-11394
-# assess the overlap/difference between the stratus 14-10600 and 15-11394.
+# stratus 14-10600 was chosen for closer match  with stratus 15-12257
+# assess the overlap/difference between the stratus 14-10600 and 15-12257.
 
 # Load necessary libraries
 import os
@@ -16,6 +16,7 @@ from qc_function import remove_spikes, compute_diff_stats
 
 # %%
 # Define case names and instrument serial numbers
+version = 'v1'
 project_name = 'stratus'
 project_number = 14 # the project number of the last merged dataset
 
@@ -29,7 +30,7 @@ instrument1_2 = '12257'
 # store the results in the doc folder of the latter case
 
 doc = f'/Users/yugao/UOP/ORS-processing/doc/{project_name}/{project_number+1}'
-
+img = f'/Users/yugao/UOP/ORS-processing/img'
 print(f'Examining overlap between {case_name0} and {case_name1}')
 
 # %%
@@ -37,8 +38,8 @@ print(f'Examining overlap between {case_name0} and {case_name1}')
 ds0_instrument1 = xr.open_dataset(f'/Users/yugao/UOP/ORS-processing/data/processed/merged_stratus/merged_stratus12_to_stratus{project_number}.nc')
 
 # stratus 15
-ds1_instrument1 = xr.open_dataset(f'/Users/yugao/UOP/ORS-processing/data/processed/{case_name1}/{case_name1}_{instrument1_1}_cleaned.nc')
-ds1_instrument2 = xr.open_dataset(f'/Users/yugao/UOP/ORS-processing/data/processed/{case_name1}/{case_name1}_{instrument1_2}_cleaned.nc')
+ds1_instrument1 = xr.open_dataset(f'/Users/yugao/UOP/ORS-processing/data/processed/{case_name1}/{version}/{case_name1}_{instrument1_1}_cleaned.nc')
+ds1_instrument2 = xr.open_dataset(f'/Users/yugao/UOP/ORS-processing/data/processed/{case_name1}/{version}/{case_name1}_{instrument1_2}_cleaned.nc')
 
 
 # %%
@@ -46,7 +47,7 @@ ds1_instrument2 = xr.open_dataset(f'/Users/yugao/UOP/ORS-processing/data/process
 # Ensure both datasets cover the same time period for a fair comparison
 
 # Determine overlap window and extend by 2 hours
-variable = 'temp'  # Specify variable to compare
+variable = 'sea_water_temperature'  # Specify variable to compare
 overlap_start = max(ds0_instrument1.time.min(), ds1_instrument2.time.min(), ds1_instrument1.time.min())
 overlap_end = min(ds0_instrument1.time.max(), ds1_instrument2.time.max(), ds1_instrument1.time.max())
 
@@ -86,8 +87,8 @@ fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))  # Two subplots in one co
 
 # Plotting on the first subplot
 ax1.plot(sel0_1.time, sel0_1, label=f'{case_name0} - {instrument0_1}')
-ax1.plot(sel1_1_upsampled.time, sel1_1_upsampled.temp, label=f'{case_name1} - {instrument1_1}')
-ax1.plot(sel1_2_upsampled.time, sel1_2_upsampled.temp, label=f'{case_name1} - {instrument1_2}')
+ax1.plot(sel1_1_upsampled.time, sel1_1_upsampled.sea_water_temperature, label=f'{case_name1} - {instrument1_1}')
+ax1.plot(sel1_2_upsampled.time, sel1_2_upsampled.sea_water_temperature, label=f'{case_name1} - {instrument1_2}')
 ax1.set_title('Overlapping Observations')
 ax1.set_xlabel('Time')
 ax1.set_ylabel(variable)
@@ -95,8 +96,8 @@ ax1.legend()
 ax1.grid(True)  # Optionally add grid for better readability
 
 # Plotting on the second subplot
-ax2.plot(difference1.time, difference1.temp, '*', color = 'magenta', label=label1)
-ax2.plot(difference2.time, difference2.temp, 'x', color = 'black', label=label2)
+ax2.plot(difference1.time, difference1.sea_water_temperature, '*', color = 'magenta', label=label1)
+ax2.plot(difference2.time, difference2.sea_water_temperature, 'x', color = 'black', label=label2)
 ax2.set_title(f'Difference Comparison')  # Title for the difference comparison
 ax2.set_xlabel('Time')
 ax2.set_ylabel(f'Difference in {variable}')
@@ -105,31 +106,32 @@ ax2.grid(True)
 
 # Save the figure
 plt.tight_layout()  # Adjust subplots to fit into figure area nicely
-plt.savefig(f'{doc}/overlap_{case_name0}_and_{case_name1}.png')
+plt.savefig(f'{img}/overlap_{case_name0}_and_{case_name1}.png')
 
 # %%
-# the unsampled stratus 14 should have the sampling frequency as 12/13
+# the unsampled stratus 15 should have the sampling frequency as 12/13
 # determine the optimal merging time point based on the minimum standard deviation
 # of the difference between the two datasets Calculate differences
 if difference1.time.size >0:
     
-    difference = sel0_1_aligned - sel1_1_upsampled
+    difference = sel0_1_aligned - sel1_2_upsampled
     
     # Convert to DataFrame for easier manipulation
-    diff_df = difference.temp.to_dataframe(name='temp_difference')
+    diff_df = difference.sea_water_temperature.to_dataframe(name='temp_difference')
 
     # Calculate rolling statistics with a window of 24 hours
     rolling_stats = diff_df['temp_difference'].rolling('6h').agg(['mean', 'std', 'median'])
 
     # find the time point with the minimum mean absolute deviation
     min_mean_time = rolling_stats['mean'].idxmin()
+    merge_point = min_mean_time
 
     print(f"Optimal merging time point based on minimum mean is: {min_mean_time}")
 
     # Select data from each dataset up to and including the optimal merging time point
 
     ds0_merge = ds0_instrument1.sel(time=slice(None, min_mean_time))
-    ds1_merge = ds1_1_upsampled.sel(time=slice(min_mean_time, None))
+    ds1_merge = ds1_2_upsampled.sel(time=slice(min_mean_time, None))
 
     # Concatenate the two datasets at the merging point
     merged_dataset = xr.concat([ds0_merge, ds1_merge], dim='time')
@@ -145,48 +147,54 @@ merged_dataset.attrs = ds0_merge.attrs.copy()
 ds_source = ds1_merge
 
 # append the merging point to the merged dataset
-merge_point = min_mean_time
-existing = str(merged_dataset.attrs.get('merge_point', 'NaT'))
-merged_dataset.attrs['merge_point'] = f"{existing}, {merge_point}" if existing else merge_point
+# Standardize the new merge point timestamp
+merge_point = pd.to_datetime(min_mean_time).strftime('%Y-%m-%dT%H:%M:%SZ')
 
+# Get existing merge points if any
+existing = merged_dataset.attrs.get('merge_point', None)
+
+if existing is None or existing == 'None':
+    merged_dataset.attrs['merge_point'] = merge_point
+else:
+    # Standardize all timestamps in the existing merge points
+    points = existing.split(', ')
+    standardized = [pd.to_datetime(p).strftime('%Y-%m-%dT%H:%M:%SZ') for p in points if p != 'None']
+    standardized.append(merge_point)
+    merged_dataset.attrs['merge_point'] = ', '.join(standardized)
+    
 # Define attributes to be appended from the second dataset
-attrs_to_append = ['deployment', 'instrument_SN', 'instrument_model',
-                    'latitude_anchor_survey', 'longitude_anchor_survey', 
-                    'global_wmo_platform_code', 'platform_start_year',
-                    'platform_water_depth_m', 'platform_watch_circle_nm',
-                    'platform_deck_height_cm', 'platform_anchor_times',
-                    'platform_data_start_time', 
-                    'platform_anchor_over_time', 
-                    'platform_anchor_release_time',
-                    'sensor_mean_temp', 
-                    'sensor_mean_cond',
-                    'sensor_mean_sal',
-                    'sensor_mean_abssal',
-                    'sensor_mean_press',
-                    'sensor_std_temp', 
-                    'sensor_std_cond',
-                    'sensor_std_sal',
-                    'sensor_std_abssal',
-                    'sensor_std_press']
+from metadata_merger import attrs_to_append, attrs_to_delete, attr_alternatives
 
 # Append new values from the second dataset
 for attr in attrs_to_append:
-    value = ds_source.attrs.get(attr, 'Unknown')
-    existing = str(merged_dataset.attrs.get(attr, 'Unknown'))
+    # get the value from the alternative attribute name
+    existing = str(merged_dataset.attrs.get(attr))
+    value = ds_source.attrs.get(attr)
     merged_dataset.attrs[attr] = f"{existing}, {value}" if existing else value
+    
+    # use alternative attribute name if the original attribute is not found
+    if value is None:
+        for alt_attr, standard_attr in attr_alternatives.items():
+            if alt_attr in ds_source.attrs:
+                merged_dataset.attrs[attr] = f"{existing}, {ds_source.attrs[alt_attr]}" if existing else ds_source.attrs[alt_attr]
 
-# Define attributes to be deleted
-attrs_to_delete = ['platform_deployment_number',
-    'platform_deployment_number', 'platform_data_end_time'
-    'platform_duration', 'instrument_firmware_version', 'inputfileheader']
 
-# Perform deletions
-for attr in attrs_to_delete:
-    merged_dataset.attrs.pop(attr, None)
+
+# %%
+# Append variable attributes from the source dataset to the merged dataset
+from util import append_variable_attributes
+
+merged_dataset = append_variable_attributes(ds_source, merged_dataset)
 
 # Update time attributes based on the time coverage of the merged dataset
 merged_dataset.attrs['time_coverage_start'] = pd.to_datetime(merged_dataset.time.min().values).strftime('%Y-%m-%dT%H:%M:%SZ')
 merged_dataset.attrs['time_coverage_end'] = pd.to_datetime(merged_dataset.time.max().values).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+# update geospatial bounds
+from metadata_merger import update_geospatial_bounds
+
+# Update the geospatial bounds to get the true min/max values
+merged_dataset = update_geospatial_bounds(merged_dataset)
 
 merged_dataset.attrs
 
@@ -199,7 +207,7 @@ print(f"Merging completed. Dataset saved to merged_stratus12_to_{case_name1}.nc"
 
 # %%
 # verify the merging point
-temperature = merged_dataset['temp'].sel(time=slice(extended_start, extended_end))[:100]
+temperature = merged_dataset['sea_water_temperature'].sel(time=slice(extended_start, extended_end))[:100]
 
 # Plotting
 fig, ax = plt.subplots(figsize=(12, 6))
@@ -224,56 +232,21 @@ ax.grid(True)
 
 # save the plot
 plt.tight_layout()
-plt.savefig(f'{doc}/merge_point_{case_name0}_and_{case_name1}.png')
+plt.savefig(f'{img}/merge_point_{case_name0}_and_{case_name1}.png')
 
 
 # %%
 # plot the merged dataset
-# Extract variables
-cond = merged_dataset['cond']
-sal = merged_dataset['sal']
-temp = merged_dataset['temp']
-press = merged_dataset['press']
-abssal = merged_dataset['abssal']
+from plot_function import plot_merged_dataset
 
-# Create a figure with multiple subplots
-fig, axs = plt.subplots(5, 1, figsize=(12, 20), sharex=True)  # Adjust figsize to better fit your screen or document
-
-# Plot each variable
-axs[0].plot(cond.time, cond, label='Conductivity', color='blue')
-axs[1].plot(sal.time, sal, label='Salinity', color='green')
-axs[2].plot(temp.time, temp, label='Temperature', color='red')
-axs[3].plot(press.time, press, label='Pressure', color='purple')
-axs[4].plot(abssal.time, abssal, label='Absolute Salinity', color='orange')
-
-# Set titles for each subplot
-axs[0].set_title('Conductivity Over Time')
-axs[1].set_title('Salinity Over Time')
-axs[2].set_title('Temperature Over Time')
-axs[3].set_title('Pressure Over Time')
-axs[4].set_title('Absolute Salinity Over Time')
-
-# Add labels and grid
-for ax in axs:
-    ax.set_ylabel('Value')
-    ax.legend()
-    ax.grid(True)
-
-# Set common X-axis label
-axs[4].set_xlabel('Time')
-
-# Show the plot
-plt.tight_layout()  # Adjust subplots to fit into the figure area nicely
-
-# save the figure
-plt.savefig(f'{doc}/merged_dataset_{case_name0}_and_{case_name1}.png')
-
+# Define the image directory
+img = '/Users/yugao/UOP/ORS-processing/img/'
+# After merging datasets, use the function to create the plot
+plot_merged_dataset(
+    merged_dataset, 
+    f'{img}/merged_dataset_{case_name0}_and_{case_name1}.png',
+    case_name0=case_name0,
+    case_name1=case_name1
+)
 
 # %%
-# verify the merged dataset
-merged_data_dir = '/Users/yugao/UOP/ORS-processing/data/processed/merged_stratus'
-merged_dataset = xr.open_dataset(f'{merged_data_dir}/merged_stratus12_to_{case_name1}.nc')
-
-# %%
-merged_dataset.time[-10:]
-

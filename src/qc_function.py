@@ -142,15 +142,17 @@ import matplotlib.pyplot as plt
 import xarray as xr
 import numpy as np
 
-def create_hitl_catalog(original_ds, qc_ds, deployment_id, instrument_number, output_dir='../img'):
+def create_hitl_catalog(original_ds, qc_ds, deployment_id, instrument_number, output_dir='../img', display_name=None):
     """
     Create a catalog of original and QC plots for HITL quality control on the same panel.
     
     Parameters:
     - original_ds: xarray Dataset containing original data
     - qc_ds: xarray Dataset containing quality controlled data
-    - deployment_id: string identifier for the deployment
+    - deployment_id: string identifier for the deployment (used for filenames)
+    - instrument_number: string identifier for the instrument
     - output_dir: directory to save the plots
+    - display_name: optional display name for plot titles (e.g., 'STRATUS12' instead of 'stratus12')
     """
     variables = ['sea_water_temperature', 
             'sea_water_practical_salinity', 
@@ -158,8 +160,11 @@ def create_hitl_catalog(original_ds, qc_ds, deployment_id, instrument_number, ou
             'sea_water_electrical_conductivity', 
             'sea_water_pressure']
     
+    # Use display_name for titles if provided, otherwise use deployment_id
+    title_name = display_name if display_name is not None else deployment_id
+    
     fig, axs = plt.subplots(5, 1, figsize=(15, 25))
-    fig.suptitle(f"Deployment {deployment_id}: Original vs QC Data", fontsize=16)
+    fig.suptitle(f"Deployment {title_name}: Original vs QC Data", fontsize=16)
     
     for i, var in enumerate(variables):
         # Plot original data
@@ -191,8 +196,11 @@ def create_hitl_catalog(original_ds, qc_ds, deployment_id, instrument_number, ou
                     verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
     
     plt.tight_layout()
+    # Still use the original deployment_id for filenames
     plt.savefig(f"{output_dir}/{deployment_id}_{instrument_number}_hitl_catalog.png", dpi=300, bbox_inches='tight')
     plt.close()
+    
+    return f"{output_dir}/{deployment_id}_{instrument_number}_hitl_catalog.png"
 
 import pandas as pd
 import xarray as xr
@@ -297,3 +305,65 @@ def standardize_ocean_variables(ds):
             ds_standard[new_name].attrs['units'] = standards['units']
     
     return ds_standard
+
+def export_spike_stats(spike_data, instrument_numbers, output_dir, project_name, project_number):
+    """
+    Export spike removal statistics as a LaTeX table.
+    
+    Parameters:
+        spike_data (dict): Dictionary containing spike percentages for each variable and instrument
+                          Format: {'instrument1': {'var1': pct1, 'var2': pct2, ...}, 
+                                   'instrument2': {'var1': pct1, 'var2': pct2, ...}}
+        instrument_numbers (list): List of instrument serial numbers/identifiers
+        output_dir (str): Directory path to save the LaTeX file
+        project_name (str): Name of the project (e.g., 'stratus')
+        project_number (str): Number of the project (e.g., '12')
+    """
+    # Ensure output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Function to escape underscores for LaTeX
+    def escape_latex(text):
+        """Replace underscores in text with escaped underscores for LaTeX"""
+        if isinstance(text, str):
+            return text.replace('_', '\\_')
+        return text
+    
+    # Get all variables (union of keys from all instruments)
+    all_variables = set()
+    for instrument in spike_data.keys():
+        all_variables.update(spike_data[instrument].keys())
+    all_variables = sorted(list(all_variables))
+    
+    # Prepare LaTeX output
+    tex_path = os.path.join(output_dir, f'spike_stats.tex')
+    with open(tex_path, 'w') as f:
+        f.write("\\begin{table}[h]\n\\centering\n")
+        f.write("\\caption{Spike removal statistics for \\projectname{} \\casenumber{}}\n")
+        f.write("\\label{tab:spike_stats}\n")
+        
+        # Create table header
+        f.write("\\begin{tabular}{|l|" + "c|"*len(instrument_numbers) + "}\n\\hline\n")
+        
+        # Column headers with instrument numbers
+        f.write("Variable & " + " & ".join([f"SN {sn} (\\%)" for sn in instrument_numbers]) + " \\\\\n\\hline\n")
+        
+        # Add data rows
+        for var in all_variables:
+            escaped_var = escape_latex(var)
+            row_values = []
+            
+            for i, instrument in enumerate(spike_data.keys()):
+                if var in spike_data[instrument]:
+                    pct = spike_data[instrument][var]
+                    row_values.append(f"{pct:.4f}")
+                else:
+                    row_values.append("N/A")
+            
+            f.write(f"{escaped_var} & " + " & ".join(row_values) + " \\\\\n")
+        
+        # Close the table
+        f.write("\\hline\n\\end{tabular}\n")
+        f.write("\\end{table}\n")
+    
+    print(f"Spike statistics exported to {tex_path}")

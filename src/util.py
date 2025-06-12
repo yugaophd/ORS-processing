@@ -6,6 +6,7 @@ import cftime
 import os
 from scipy.io.matlab import mat_struct
 import scipy
+from datetime import datetime  # Add this import at the top
 
 def convert_cftime_to_pandas_timestamp(ds, start_date):
     """
@@ -35,6 +36,40 @@ def convert_cftime_to_pandas_timestamp(ds, start_date):
     
     return regular_time_array
 
+def convert_cftime_to_matplotlib(cftime_dates):
+    """
+    Convert datetime objects to matplotlib-compatible datetime objects
+    
+    Parameters:
+    -----------
+    cftime_dates : array
+        Array of datetime objects (cftime, numpy.datetime64, or others)
+    
+    Returns:
+    --------
+    list
+        List of matplotlib-compatible datetime objects
+    """
+    result = []
+    for t in cftime_dates:
+        if hasattr(t, 'year') and hasattr(t, 'month'):
+            # It's a cftime object with direct attributes
+            result.append(datetime(t.year, t.month, t.day, t.hour, t.minute, t.second))
+        elif isinstance(t, np.datetime64):
+            # It's a numpy.datetime64 object - convert through pandas
+            result.append(pd.Timestamp(t).to_pydatetime())
+        else:
+            # Try a generic approach for other datetime types
+            try:
+                result.append(pd.to_datetime(t).to_pydatetime())
+            except Exception as e:
+                print(f"Warning: Couldn't convert time object of type {type(t)}: {e}")
+                # Use a fallback value or None
+                result.append(None)
+    
+    # Filter out None values if any conversion failed
+    return [t for t in result if t is not None]
+    
 import pandas as pd
 
 def truncate_valid_hourly_data(ds):
@@ -55,14 +90,14 @@ def truncate_valid_hourly_data(ds):
     min_observation_duration = pd.Timedelta(days=180)  # Minimum observation duration
 
     # Temporal Consistency: Rolling window standard deviation
-    temp_std = ds['temp'].rolling(time=12, center=True).std()
-    sal_std = ds['sal'].rolling(time=12, center=True).std()
-    cond_std = ds['cond'].rolling(time=12, center=True).std()
+    temp_std = ds['sea_water_temperature'].rolling(time=12, center=True).std()
+    sal_std = ds['sea_water_practical_salinity'].rolling(time=12, center=True).std()
+    cond_std = ds['sea_water_electrical_conductivity'].rolling(time=12, center=True).std()
 
     # Range Constraints
-    valid_temp_range = (ds['temp'] >= temp_range[0]) & (ds['temp'] <= temp_range[1])
-    valid_sal_range = (ds['sal'] >= sal_range[0]) & (ds['sal'] <= sal_range[1])
-    valid_cond_range = (ds['cond'] >= cond_range[0]) & (ds['cond'] <= cond_range[1])
+    valid_temp_range = (ds['sea_water_temperature'] >= temp_range[0]) & (ds['sea_water_temperature'] <= temp_range[1])
+    valid_sal_range = (ds['sea_water_practical_salinity'] >= sal_range[0]) & (ds['sea_water_practical_salinity'] <= sal_range[1])
+    valid_cond_range = (ds['sea_water_electrical_conductivity'] >= cond_range[0]) & (ds['sea_water_electrical_conductivity'] <= cond_range[1])
 
     # Temporal Duration
     observation_duration = pd.Timedelta(ds['time'].values[-1] - ds['time'].values[0])
@@ -101,7 +136,7 @@ def read_mat_file(file_path):
     """
     return scipy.io.loadmat(file_path, struct_as_record=False, squeeze_me=True)
 
-def create_xarray_dataset(mat_data):
+def create_xarray_dataset(mat_data, fill_value = -99999.0):
     """
     Create an xarray dataset from a MATLAB data dictionary.
     """
@@ -110,27 +145,56 @@ def create_xarray_dataset(mat_data):
     # Handling time-series data with 'mday' as the time dimension
     if 'mday' in mat_data:
         time_dim = 'time'
-        ds[time_dim] = xr.DataArray(data=np.squeeze(mat_data['mday']), dims=[time_dim], attrs={'units': 'days since 0000-01-01 00:00:00', 'calendar': 'gregorian'})
+        ds[time_dim] = xr.DataArray(data=np.squeeze(mat_data['mday']), dims=[time_dim], 
+                                    attrs={'units': 'days since 0000-01-01 00:00:00', 
+                                    'calendar': 'gregorian'})
 
         # Define metadata for variables
-        variables = ['abssal', 'cond', 'sal', 'temp', 'press']
-        units = {'temp': '°C', 'sal': 'psu', 'abssal': 'g/kg', 'cond': 'S/m', 'press': 'dbar'}
+        variables = ['temp', 'cond', 'sal', 'abssal', 'press']
+        units = {'temp': '°C', 
+                'cond': 'psu', 
+                'sal': 'g/kg', 
+                'abssal': 'S/m', 
+                'press': 'dbar'}
         long_names = {
             'temp': 'sea water temperature',
-            'sal': 'practical salinity',
-            'abssal': 'absolute salinity',
             'cond': 'sea water conductivity',
+            'sal': 'sea water practical salinity',
+            'abssal': 'sea water absolute salinity',
             'press': 'sea water pressure'
         }
 
         # Add other variables if they exist
         for var_name in variables:
             if var_name in mat_data:
+                print(f"Adding variable: {var_name}")
+                print(f"Adding variable: {long_names[var_name]}")
                 ds[var_name] = xr.DataArray(
                     data=np.squeeze(mat_data[var_name]),
                     dims=[time_dim],
-                    attrs={'units': units[var_name], 'long_name': long_names[var_name]}
+                    attrs={'units': units[var_name], 
+                        'long_name': long_names[var_name],
+                        # '_FillValue': fill_value
+                        }
                 )
+                # Assign `_FillValue` in encoding
+                ds[var_name].encoding["_FillValue"] = fill_value
+                
+            if var_name not in mat_data:
+                # fill the variables with fill value
+                # Create the variable with fill_value if it does not exist
+                print(f"Creating variable: {var_name}")
+                ds[var_name] = xr.full_like(ds['temp'], 
+                                    fill_value, 
+                                    dtype=type(fill_value))  # Ensure type consistency
+                # ds[var_name].attrs['info'] = f'Variable created with fill value {fill_value} due to non-existence'
+                ds[var_name].attrs['long_name'] = long_names[var_name]  
+                # ds[var_name].attrs['_FillValue'] = fill_value  
+                ds[var_name].attrs['units'] = units[var_name] 
+                
+                # Assign `_FillValue` in encoding
+                ds[var_name].encoding["_FillValue"] = fill_value
+    
 
     return ds
 
@@ -229,10 +293,14 @@ def fill_or_create_variables(ds, variables, fill_value=-99999.0):
                 ds[var].attrs['info'] = 'Forward filled missing values.'
         else:
             # Create the variable with fill_value if it does not exist
-            ds[var] = xr.full_like(ds['temp'], fill_value, dtype=type(fill_value))  # Ensure type consistency
+            ds[var] = xr.full_like(ds['temp'].data, 
+                                fill_value, dtype=type(fill_value))  # Ensure type consistency
             ds[var].attrs['info'] = f'Variable created with fill value {fill_value} due to non-existence'
+            # ds[var].attrs['long_name'] = ds[var].long_name  # Copy long name from temperature
+            # ds[var].attrs['units'] = ds[var].units  # Copy units from temperature
+            
         # Assign `_FillValue` in encoding
-        ds[var].encoding["_FillValue"] = fill_value
+        # ds[var].encoding["_FillValue"] = fill_value
 
         # explicitly set missing values in attributes
         # ds[var].attrs["missing_value"] = fill_value  # Older convention
@@ -318,7 +386,11 @@ def append_variable_attributes(ds_source, merged_dataset):
     - merged_dataset (xarray.Dataset): The final merged dataset.
     """        
     
-    variables = ['temp', 'cond', 'sal', 'abssal', 'press']
+    variables = ['sea_water_temperature', 
+                'sea_water_practical_salinity', 
+                'sea_water_absolute_salinity', 
+                'sea_water_electrical_conductivity', 
+                'sea_water_pressure']
 
     # List of statistical attributes to handle
     stat_attrs = [

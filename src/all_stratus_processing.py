@@ -1,5 +1,5 @@
 # %%
-# Stratus deployment processing script
+# STRATUS deployment processing script
 # Regular script format for Jupyter notebooks
 
 import numpy as np
@@ -13,20 +13,22 @@ import pandas as pd
 import re
 import glob
 
+# %%
+# Configuration: specify the deployment config file
+config_file = 'stratus22_config.json'  # Edit this path as needed
+data_path = '/Users/yugao/UOP/ORS-processing/data/processed'
+version = 'v1'  # Specify version'
+
 # Import your custom modules
 os.chdir('/Users/yugao/UOP/ORS-processing/src')
 from metadata import create_json, process_attributes_direct, standardize_attribute_names, \
-                     ensure_standard_attributes, validate_attributes, add_geospatial_attributes, \
-                     reorder_oceansites_attributes
+                    ensure_standard_attributes, validate_attributes, add_geospatial_attributes, \
+                    reorder_oceansites_attributes
 from netcdf_sbe37 import read_mat_file
 from util import create_xarray_dataset, process_attributes_direct, fill_or_create_variables
 import gsw  # Add this import for TEOS-10 calculations
 from plot_function import plot_spike_data, plot_deployment_recovery
-# %%
-# Configuration: specify the deployment config file
-config_file = 'stratus12_config.json'  # Edit this path as needed
-data_path = '/Users/yugao/UOP/ORS-processing/data/processed'
-version = 'v1'  # Specify version
+
 
 # %%
 # Load deployment configuration
@@ -150,8 +152,8 @@ for instrument in config['instruments']:
     lon = float(valid_time_window.attrs['longitude_anchor_survey'])
     lat = float(valid_time_window.attrs['latitude_anchor_survey'])
     absolute_salinity = gsw.SA_from_SP(practical_salinity, 
-                                     pressure_values,
-                                     lon, lat)
+                                        pressure_values,
+                                        lon, lat)
 
     # Create the absolute salinity variable with explicit coordinates
     valid_time_window['sea_water_absolute_salinity'] = (('time'), absolute_salinity.values)
@@ -170,8 +172,6 @@ for instrument in config['instruments']:
     }
 
     # Add a print statement to verify the variables exist and contain data
-    print(f"Practical salinity stats: min={practical_salinity.min().values:.3f}, max={practical_salinity.max().values:.3f}, mean={practical_salinity.mean().values:.3f}")
-    print(f"Absolute salinity stats: min={absolute_salinity.min().values:.3f}, max={absolute_salinity.max().values:.3f}, mean={absolute_salinity.mean().values:.3f}")
 
     # Compare computed with original values (for QC and logging only)
     if original_practical_salinity is not None:
@@ -198,6 +198,11 @@ for instrument in config['instruments']:
     
     # Apply metadata from configuration
     valid_time_window.attrs['version'] = version  # Add version to attributes
+    
+    # Add comments from configuration if available
+    if 'comments' in config:
+        valid_time_window.attrs['comments'] = config['comments']
+        print(f"Added comments to metadata: {config['comments'][:50]}...")
     
     # Add water depth information
     valid_time_window.attrs['water_depth_from_ship_uncorrected_m'] = water_depth_from_ship_uncorrected
@@ -262,10 +267,10 @@ for instrument in config['instruments']:
             print(f"  - {issue}")
     
     # Save dataset with version in filename
-    output_dir = os.path.join(data_path, case_name, version)
+    output_dir = os.path.join(data_path, case_name.lower(), version)
     os.makedirs(output_dir, exist_ok=True)
     
-    output_file = os.path.join(output_dir, f'{case_name}_{instrument["serial_number"]}_truncated.nc')
+    output_file = os.path.join(output_dir, f'{case_name.lower()}_{instrument["serial_number"]}_truncated.nc')
     valid_time_window.to_netcdf(output_file)
     print(f"Saved processed data to {output_file}")
     
@@ -280,6 +285,7 @@ for instrument in config['instruments']:
 # Create comparison plot using the saved NetCDF files instead of in-memory datasets
 if len(processed_datasets) >= 2:
     import matplotlib.dates as mdates
+    from util import convert_cftime_to_matplotlib 
     from datetime import datetime
     import numpy.ma as ma
     
@@ -305,27 +311,15 @@ if len(processed_datasets) >= 2:
             'Conductivity (S/m)', 
             'Pressure (dbar)']
     panel_titles = ['Temperature', 
-                   'Practical Salinity', 
-                   'Absolute Salinity', 
-                   'Conductivity', 
-                   'Pressure']
+                    'Practical Salinity', 
+                    'Absolute Salinity', 
+                    'Conductivity', 
+                    'Pressure']
     
     colors = ['blue', 'green', 'red', 'purple', 'black']
     colors2 = ['cyan', 'lightgreen', 'pink', 'violet', 'gray']
     
     fig, axs = plt.subplots(len(variables), 1, figsize=(12, 15), sharex=True)
-    
-    def convert_cftime_to_matplotlib(time_values):
-        result = []
-        for t in time_values:
-            if isinstance(t, np.datetime64):
-                # Convert numpy.datetime64 to Python datetime
-                t_datetime = pd.Timestamp(t).to_pydatetime()
-                result.append(t_datetime)
-            else:
-                # Handle cftime objects
-                result.append(datetime(t.year, t.month, t.day, t.hour, t.minute, t.second))
-        return result
     
     # Simply use the truncated datasets directly
     ds1_common = truncated_ds
@@ -421,7 +415,7 @@ if len(processed_datasets) >= 2:
     fig.suptitle(
         f'Comparison within {case_name} Data\n'
         f'Location: ({formatted_latitude}, {formatted_longitude}) | '
-        f'Depth: {instrument_depth}m | V{version}', 
+        f'Depth: {instrument_depth}m', 
         fontsize=16
     )
     
@@ -429,7 +423,7 @@ if len(processed_datasets) >= 2:
     
     plot_path = '../img/'
     os.makedirs(plot_path, exist_ok=True)
-    plot_filename = os.path.join(plot_path, f"{case_name}_{instrument_SN}_vs_{instrument_SN2}_comparison.png")
+    plot_filename = os.path.join(plot_path, f"{case_name.lower()}_{instrument_SN}_vs_{instrument_SN2}_comparison.png")
     plt.savefig(plot_filename, dpi=150)
     print(f'Plot saved as {plot_filename}')
     
@@ -508,47 +502,86 @@ if len(processed_datasets) >= 2:
     
     # 1. Create spike plots for each instrument
     try:
-        # Get spike times from config
-        deployment_start = pd.to_datetime(config['deployment_spike_times']['start']).replace(tzinfo=None)
-        deployment_end = pd.to_datetime(config['deployment_spike_times']['end']).replace(tzinfo=None)
-        recovery_start = pd.to_datetime(config['recovery_spike_times']['start']).replace(tzinfo=None)
-        recovery_end = pd.to_datetime(config['recovery_spike_times']['end']).replace(tzinfo=None)
+        # Get deployment spike times from config with proper null handling
+        deployment_start = None
+        deployment_end = None
+        if config['deployment_spike_times']['start'] is not None:
+            deployment_start = pd.to_datetime(config['deployment_spike_times']['start']).replace(tzinfo=None)
+            deployment_end = pd.to_datetime(config['deployment_spike_times']['end']).replace(tzinfo=None)
+            print(f"Using deployment spike times from config")
+        else:
+            print(f"No deployment spike times available")
+        
+        # Safely handle recovery spike times that might be null
+        recovery_start = None
+        recovery_end = None
+        if config['recovery_spike_times']['start'] is not None:
+            recovery_start = pd.to_datetime(config['recovery_spike_times']['start']).replace(tzinfo=None)
+            recovery_end = pd.to_datetime(config['recovery_spike_times']['end']).replace(tzinfo=None)
+            print(f"Using recovery spike times from config")
+        else:
+            print(f"No recovery spike times available - will only plot deployment spikes")
         
         # Add buffer 
         buffer = pd.Timedelta(hours=2)
         
-        # Process first instrument - use ORIGINAL MAT DATA for spikes
+        # Process first instrument
         ds1_deployment_spike = ds1.sel(time=slice(deployment_start - buffer, deployment_end + buffer))
-        ds1_recovery_spike = ds1.sel(time=slice(recovery_start - buffer, recovery_end + buffer))
         
-        # Plot first instrument spike data
-        spike_img_path1 = os.path.join(img_path, f"{case_name}_{sn1}_spikes.png")
-        plot_spike_data(ds1_deployment_spike, ds1_recovery_spike, case_name, spike_img_path1,
-                        deployment_spike_start=deployment_start, 
-                        deployment_spike_end=deployment_end, 
-                        recovery_spike_start=recovery_start,
-                        recovery_spike_end=recovery_end,
-                        start_label="Spike starts", 
-                        end_label="Spike ends")
+        # Always use consistent lowercase naming
+        spike_img_path1 = os.path.join(img_path, f"{case_name.lower()}_{sn1}_spikes.png")
+        
+        # Plot first instrument data
+        if recovery_start is not None:
+            ds1_recovery_spike = ds1.sel(time=slice(recovery_start - buffer, recovery_end + buffer))
+            plot_spike_data(ds1_deployment_spike, ds1_recovery_spike, case_name.lower(), spike_img_path1,
+                            deployment_spike_start=deployment_start, 
+                            deployment_spike_end=deployment_end, 
+                            recovery_spike_start=recovery_start,
+                            recovery_spike_end=recovery_end,
+                            start_label="Spike starts", 
+                            end_label="Spike ends")
+        else:
+            # No recovery data
+            plot_spike_data(ds1_deployment_spike, None, case_name.lower(), spike_img_path1,
+                            deployment_spike_start=deployment_start, 
+                            deployment_spike_end=deployment_end,
+                            recovery_spike_start=None,
+                            recovery_spike_end=None, 
+                            start_label="Spike starts", 
+                            end_label="Spike ends")
         print(f"Spike plot saved as {spike_img_path1}")
         
-        # Process second instrument - use ORIGINAL MAT DATA for spikes
+        # Process second instrument (similar approach)
         ds2_deployment_spike = ds2.sel(time=slice(deployment_start - buffer, deployment_end + buffer))
-        ds2_recovery_spike = ds2.sel(time=slice(recovery_start - buffer, recovery_end + buffer))
         
-        # Plot second instrument spike data
-        spike_img_path2 = os.path.join(img_path, f"{case_name}_{sn2}_spikes.png")
-        plot_spike_data(ds2_deployment_spike, ds2_recovery_spike, case_name, spike_img_path2,
-                        deployment_spike_start=deployment_start, 
-                        deployment_spike_end=deployment_end, 
-                        recovery_spike_start=recovery_start,
-                        recovery_spike_end=recovery_end,
-                        start_label="Spike starts", 
-                        end_label="Spike ends")
-        print(f"Spike plot saved as {spike_img_path1}")
+        # Use consistent lowercase naming for the second instrument too
+        spike_img_path2 = os.path.join(img_path, f"{case_name.lower()}_{sn2}_spikes.png")
+        
+        if recovery_start is not None:
+            ds2_recovery_spike = ds2.sel(time=slice(recovery_start - buffer, recovery_end + buffer))
+            plot_spike_data(ds2_deployment_spike, ds2_recovery_spike, case_name.lower(), spike_img_path2,
+                            deployment_spike_start=deployment_start, 
+                            deployment_spike_end=deployment_end, 
+                            recovery_spike_start=recovery_start,
+                            recovery_spike_end=recovery_end,
+                            start_label="Spike starts", 
+                            end_label="Spike ends")
+        else:
+            # No recovery data
+            plot_spike_data(ds2_deployment_spike, None, case_name.lower(), spike_img_path2,
+                            deployment_spike_start=deployment_start, 
+                            deployment_spike_end=deployment_end,
+                            recovery_spike_start=None,
+                            recovery_spike_end=None, 
+                            start_label="Spike starts", 
+                            end_label="Spike ends")
+        print(f"Spike plot saved as {spike_img_path2}")
         
     except Exception as e:
         print(f"Error creating spike plots: {e}")
+        import traceback
+        traceback.print_exc()
     
     # 2. Create deployment/recovery phase plots for each instrument
     try:

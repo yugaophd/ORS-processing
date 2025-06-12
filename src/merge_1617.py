@@ -17,6 +17,7 @@ os.chdir('/Users/yugao/UOP/ORS-processing/src')
 
 # %%
 # Define case names and instrument serial numbers
+version = 'v1'
 project_name = 'stratus'
 project_number = 16 # the project number of the last merged dataset
 
@@ -30,7 +31,7 @@ instrument1_2 = '12257'
 # store the results in the doc folder of the latter case
 project_name = 'stratus'
 doc = f'/Users/yugao/UOP/ORS-processing/doc/{project_name}/{project_number+1}'
-
+img = f'/Users/yugao/UOP/ORS-processing/img'
 print(f'Examining overlap between {case_name0} and {case_name1}')
 
 # %%
@@ -40,8 +41,8 @@ merged_dir = '/Users/yugao/UOP/ORS-processing/data/processed/merged_stratus'
 ds0_instrument1 = xr.open_dataset(f'{merged_dir}/merged_stratus12_to_stratus{project_number}.nc')
 # to be merged dataset
 processed_dir = '/Users/yugao/UOP/ORS-processing/data/processed'
-ds1_instrument1 = xr.open_dataset(f'{processed_dir}/{case_name1}/{case_name1}_{instrument1_1}_cleaned.nc')
-ds1_instrument2 = xr.open_dataset(f'{processed_dir}/{case_name1}/{case_name1}_{instrument1_2}_cleaned.nc')
+ds1_instrument1 = xr.open_dataset(f'{processed_dir}/{case_name1}/{version}/{case_name1}_{instrument1_1}_cleaned.nc')
+ds1_instrument2 = xr.open_dataset(f'{processed_dir}/{case_name1}/{version}/{case_name1}_{instrument1_2}_cleaned.nc')
 
 # Average higher sampling rate data to match the lower sampling rate data
 ds1_resampled1 = ds1_instrument1.resample(time='30min').mean()
@@ -52,7 +53,7 @@ ds1_resampled2 = ds1_instrument2.resample(time='30min').mean()
 # Ensure both datasets cover the same time period for a fair comparison
 
 # Determine overlap window and extend by 2 hours
-variable = 'temp'  # Specify variable to compare
+variable = 'sea_water_temperature'  # Specify variable to compare
 
 overlap_start = max(ds0_instrument1.time.min(), ds1_resampled2.time.min(), ds1_resampled1.time.min())
 overlap_end = min(ds0_instrument1.time.max(), ds1_resampled2.time.max(), ds1_resampled1.time.max())
@@ -63,11 +64,23 @@ if overlap_start >= overlap_end:
     # Select data from each dataset up to and including the optimal merging time point
     ds0_merge = ds0_instrument1
     ds1_merge = ds1_resampled1
+    
+    # no overlap, the merge point is the start of the second dataset
+    # Get the timestamp from the first time value of the second dataset
+    merge_point = pd.to_datetime(ds1_merge.time[0].values).strftime('%Y-%m-%dT%H:%M:%SZ')
+    
+    # Define min_mean_time for plotting (this is the missing line)
+    min_mean_time = pd.to_datetime(merge_point)
 
     # Merge the datasets aligning by 'time' dimension and filling gaps with NaNs
-    merged_ds = xr.concat([ds0_merge, ds1_merge], dim="time")
-    merged_ds = merged_ds.sortby("time")
+    merged_dataset = xr.concat([ds0_merge, ds1_merge], dim="time")
+    merged_dataset = merged_dataset.sortby("time")
     
+    # no overlap, the merge point is the start of the second dataset
+    # Get the timestamp from the first time value of the second dataset
+    merge_point = pd.to_datetime(ds1_merge.time[0].values).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
     # Plotting
     extended_start = overlap_start - pd.Timedelta(hours=120)
     extended_end = overlap_end + pd.Timedelta(hours=120)
@@ -92,7 +105,7 @@ if overlap_start >= overlap_end:
 
     # Save the figure
     plt.tight_layout()  # Adjust subplots to fit into figure area nicely
-    plt.savefig(f'{doc}/overlap_{case_name0}_and_{case_name1}.png')
+    plt.savefig(f'{img}/overlap_{case_name0}_and_{case_name1}.png')
     
 else:
     print(f'Overlap between the two datasets found from {overlap_start} to {overlap_end}.')
@@ -128,7 +141,7 @@ else:
     
     # Save the figure
     plt.tight_layout()  # Adjust subplots to fit into figure area nicely
-    plt.savefig(f'{doc}/overlap_{case_name0}_and_{case_name1}.png')
+    plt.savefig(f'{img}/overlap_{case_name0}_and_{case_name1}.png')
 
     difference = ds0_instrument1[variable] - ds1_resampled1[variable]
 
@@ -140,6 +153,7 @@ else:
 
     # Optionally, find the time point with the minimum mean or median absolute deviation
     min_mean_time = rolling_stats['mean'].idxmin()
+    merge_point = min_mean_time
 
     print(f"Optimal merging time point based on minimum mean is: {min_mean_time}")
 
@@ -149,79 +163,74 @@ else:
     ds1_merge = ds1_resampled1.sel(time=slice(min_mean_time, None))
 
     # Concatenate the two datasets at the merging point
-    merged_ds = xr.concat([ds0_merge, ds1_merge], dim='time')
+    merged_dataset = xr.concat([ds0_merge, ds1_merge], dim='time')
 
     # Optionally, sort by time in case of any misalignment
-    merged_ds = merged_ds.sortby('time')
+    merged_dataset = merged_dataset.sortby('time')
 
 
 # %%
 # data attributes
 
 # Copy attributes from the first dataset and prepare to modify them
-merged_ds.attrs = ds0_merge.attrs.copy()
+merged_dataset.attrs = ds0_merge.attrs.copy()
 
 # Data source is the second dataset
 ds_source = ds1_merge
 
-# append the merging point to the merged dataset
-# define the "merge point" as the starting time of the subsequent deployment.
-if overlap_end < overlap_start:
-    merge_point = pd.to_datetime(ds1_merge.time[0].values).strftime('%Y-%m-%dT%H:%M:%SZ')
-    merged_ds.attrs['merge_point'] = f'{merge_point}'
-    merged_ds.attrs['merge_point_comment'] = f'If no overlap between the two datasets, merge at the start of the second dataset.'
-    print(f"No overlap between the two datasets. Merging at the start of the second dataset.")  
+# Standardize the new merge point timestamp
+merge_point = pd.to_datetime(min_mean_time).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+# Get existing merge points if any
+existing = merged_dataset.attrs.get('merge_point', None)
+
+if existing is None or existing == 'None':
+    merged_dataset.attrs['merge_point'] = merge_point
 else:
-    merge_point = min_mean_time
-    existing = str(merged_ds.attrs.get('merge_point', 'NaT'))
-    merged_ds.attrs['merge_point'] = f"{existing}, {merge_point}" if existing else merge_point
-
-# Define attributes to be deleted
-attrs_to_delete = [
-    # 'platform_anchor_over_time', 'platform_anchor_release_time',
-    'platform_duration', 'instrument_firmware_version', 'inputfileheader']
-
-# Perform deletions
-for attr in attrs_to_delete:
-    merged_ds.attrs.pop(attr, None)
-
+    # Standardize all timestamps in the existing merge points
+    points = existing.split(', ')
+    standardized = [pd.to_datetime(p).strftime('%Y-%m-%dT%H:%M:%SZ') for p in points if p != 'None']
+    standardized.append(merge_point)
+    merged_dataset.attrs['merge_point'] = ', '.join(standardized)
 # Define attributes to be appended from the second dataset
-attrs_to_append = ['deployment', 'instrument_SN', 'instrument_model',
-                    'latitude_anchor_survey', 'longitude_anchor_survey', 
-                    'global_wmo_platform_code', 'platform_start_year',
-                    'platform_water_depth_m', 'platform_watch_circle_nm',
-                    'platform_deck_height_cm', 'platform_anchor_times',
-                    'platform_data_start_time', 'platform_data_end_time', 
-                    'platform_anchor_over_time', 'platform_anchor_release_time',
-                    'platform_anchor_release_time',
-                    'sensor_mean_temp', 
-                    'sensor_mean_cond',
-                    'sensor_mean_sal',
-                    'sensor_mean_abssal',
-                    'sensor_mean_press',
-                    'sensor_std_temp', 
-                    'sensor_std_cond',
-                    'sensor_std_sal',
-                    'sensor_std_abssal',
-                    'sensor_std_press']
+from metadata_merger import attrs_to_append, attrs_to_delete, attr_alternatives
 
 # Append new values from the second dataset
 for attr in attrs_to_append:
-    value = ds_source.attrs.get(attr, 'Unknown')
-    existing = str(merged_ds.attrs.get(attr, 'Unknown'))
-    merged_ds.attrs[attr] = f"{existing}, {value}" if existing else value
+    # get the value from the alternative attribute name
+    existing = str(merged_dataset.attrs.get(attr))
+    value = ds_source.attrs.get(attr)
+    merged_dataset.attrs[attr] = f"{existing}, {value}" if existing else value
+    
+        # use alternative attribute name if the original attribute is not found
+    if value is None:
+        for alt_attr, standard_attr in attr_alternatives.items():
+            if alt_attr in ds_source.attrs:
+                merged_dataset.attrs[attr] = f"{existing}, {ds_source.attrs[alt_attr]}" if existing else ds_source.attrs[alt_attr]
+
+# %%
+# Append variable attributes from the source dataset to the merged dataset
+from util import append_variable_attributes
+
+merged_dataset = append_variable_attributes(ds_source, merged_dataset)
 
 # Update time attributes based on the time coverage of the merged dataset
-merged_ds.attrs['time_coverage_start'] = pd.to_datetime(merged_ds.time.min().values).strftime('%Y-%m-%dT%H:%M:%SZ')
-merged_ds.attrs['time_coverage_end'] = pd.to_datetime(merged_ds.time.max().values).strftime('%Y-%m-%dT%H:%M:%SZ')
+merged_dataset.attrs['time_coverage_start'] = pd.to_datetime(merged_dataset.time.min().values).strftime('%Y-%m-%dT%H:%M:%SZ')
+merged_dataset.attrs['time_coverage_end'] = pd.to_datetime(merged_dataset.time.max().values).strftime('%Y-%m-%dT%H:%M:%SZ')
 
-merged_ds.attrs
+# update geospatial bounds
+from metadata_merger import update_geospatial_bounds
+
+# Update the geospatial bounds to get the true min/max values
+merged_dataset = update_geospatial_bounds(merged_dataset)
+
+merged_dataset.attrs
 
 
 #%%
 # Save the merged dataset
 merged_data_dir = '/Users/yugao/UOP/ORS-processing/data/processed/merged_stratus'
-merged_ds.to_netcdf(f'{merged_data_dir}/merged_stratus12_to_{case_name1}.nc')
+merged_dataset.to_netcdf(f'{merged_data_dir}/merged_stratus12_to_{case_name1}.nc')
 
 print(f"Merging completed. Dataset saved to merged_stratus12_to_{case_name1}.nc")
 
@@ -229,47 +238,20 @@ print(f"Merging completed. Dataset saved to merged_stratus12_to_{case_name1}.nc"
 
 # %%
 # plot the merged dataset
-# Extract variables
-cond = merged_ds['cond']
-sal = merged_ds['sal']
-temp = merged_ds['temp']
-press = merged_ds['press']
-abssal = merged_ds['abssal']
+from plot_function import plot_merged_dataset
 
-# Create a figure with multiple subplots
-fig, axs = plt.subplots(5, 1, figsize=(12, 20), sharex=True)  # Adjust figsize to better fit your screen or document
-
-# Plot each variable
-axs[0].plot(cond.time, cond, label='Conductivity', color='blue')
-axs[1].plot(sal.time, sal, label='Salinity', color='green')
-axs[2].plot(temp.time, temp, label='Temperature', color='red')
-axs[3].plot(press.time, press, label='Pressure', color='purple')
-axs[4].plot(abssal.time, abssal, label='Absolute Salinity', color='orange')
-
-# Set titles for each subplot
-axs[0].set_title('Conductivity Over Time')
-axs[1].set_title('Salinity Over Time')
-axs[2].set_title('Temperature Over Time')
-axs[3].set_title('Pressure Over Time')
-axs[4].set_title('Absolute Salinity Over Time')
-
-# Add labels and grid
-for ax in axs:
-    ax.set_ylabel('Value')
-    ax.legend()
-    ax.grid(True)
-
-# Set common X-axis label
-axs[4].set_xlabel('Time')
-
-# Show the plot
-plt.tight_layout()  # Adjust subplots to fit into the figure area nicely
-
-# save the figure
-plt.savefig(f'{doc}/merged_ds_{case_name0}_and_{case_name1}.png')
+# Define the image directory
+img = '/Users/yugao/UOP/ORS-processing/img/'
+# After merging datasets, use the function to create the plot
+plot_merged_dataset(
+    merged_dataset, 
+    f'{img}/merged_dataset_{case_name0}_and_{case_name1}.png',
+    case_name0=case_name0,
+    case_name1=case_name1
+)
 
 
 # %%
 # check continuous time range
-temp_tmp = merged_ds.sel(time=slice(extended_start, extended_end))[variable]
-temp_tmp.time.plot()
+merged_dataset
+# %%

@@ -1,0 +1,41 @@
+{
+    "case_name": "STRATUS19",
+    "instruments": [
+      {
+        "serial_number": "11379",
+        "mat_file": "/Users/Shared/ORS/Stratus/stratus19/data/sbe37/stratus19_sbe37_11379.mat",
+        "height_above_bottom": 39
+      },
+      {
+        "serial_number": "11394",
+        "mat_file": "/Users/Shared/ORS/Stratus/stratus19/data/sbe37/stratus19_sbe37_11394.mat",
+        "height_above_bottom": 39
+      }
+    ],
+    "water_depth": {
+      "from_ship_uncorrected": 4230,
+      "from_ship_corrected": 4230,
+      "from_mooring_diagram": 4540
+    },
+    "deployment_spike_times": {
+      "start": "2021-01-25 11:35:00",
+      "end": "2021-01-25 12:04:00"
+    },
+    "recovery_spike_times": {
+      "start": null,
+      "end": null
+    },
+    "processing_params": {
+      "truncation_hours_after_deployment": 4,
+      "use_release_time_for_truncation": true,
+      "default_fill_value": -99999.0
+    },
+    "time_attribute_keys": {
+      "anchor_over_time": "platform_anchor_over_time",
+      "release_fired_time": "platform_anchor_release_time_datestr",
+      "data_start_time": "platform_data_start_time"
+    },
+    "comments":
+    "The Stratus 19 mooring parted above the glass balls and went adrift on 25 Sep 2021 at 00:10 UTC. This did not impact the deep TS record."
+  }
+

@@ -1,5 +1,5 @@
 {
-  "case_name": "stratus13",
+  "case_name": "STRATUS13",
   "instruments": [
     {
       "serial_number": "1873",
@@ -32,7 +32,7 @@
   },
   "time_attribute_keys": {
     "anchor_over_time": "platform_anchor_over_time",
-    "release_fired_time": "platform_anchor_release_time",
+    "release_fired_time": "platform_buoy_recovery_time",
     "data_start_time": "platform_data_start_time"
   }
 }

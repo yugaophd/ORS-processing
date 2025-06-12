@@ -1,29 +1,29 @@
 {
-    "case_name": "STRATUS17",
+    "case_name": "STRATUS21",
     "instruments": [
       {
-        "serial_number": "11394",
-        "mat_file": "/Users/Shared/ORS/Stratus/stratus17/data/sbe37/stratus17_sbe37_11394.mat",
+        "serial_number": "11379",
+        "mat_file": "/Users/Shared/ORS/Stratus/stratus21/data/sbe37/stratus21_sbe37_11379.mat",
         "height_above_bottom": 39
       },
       {
-        "serial_number": "12257",
-        "mat_file": "/Users/Shared/ORS/Stratus/stratus17/data/sbe37/stratus17_sbe37_12257.mat",
+        "serial_number": "11394",
+        "mat_file": "/Users/Shared/ORS/Stratus/stratus21/data/sbe37/stratus21_sbe37_11394.mat",
         "height_above_bottom": 39
       }
     ],
     "water_depth": {
-      "from_ship_uncorrected": "Missing",
-      "from_ship_corrected": 4565,
+      "from_ship_uncorrected": 4262,
+      "from_ship_corrected": 4238,
       "from_mooring_diagram": 4540
     },
     "deployment_spike_times": {
-      "start": "2018-04-06 14:11:00",
-      "end": "2018-04-06 14:33:00"
+      "start": "2023-02-23T23:44:00",
+      "end": "2023-02-24T11:23:00"
     },
     "recovery_spike_times": {
-      "start": "2019-04-23 21:36:00",
-      "end": "2019-04-23 22:52:00"
+      "start": "2023-12-08T21:55:00",
+      "end": "2023-12-09T00:15:00"
     },
     "processing_params": {
       "truncation_hours_after_deployment": 4,
@@ -36,3 +36,4 @@
       "data_start_time": "platform_data_start_time"
     }
   }
+
