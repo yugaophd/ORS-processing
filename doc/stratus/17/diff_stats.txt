@@ -1,0 +1,35 @@
+temp:
+  Mean: 1.821310
+  Standard Deviation: 0.001086
+  Accuracy (mean difference): -0.000689
+  Precision (std dev of difference): 0.000174
+  QC Threshold (3 * std dev): 0.000521
+
+cond:
+  Mean: 3.216127
+  Standard Deviation: 0.000098
+  Accuracy (mean difference): -0.001370
+  Precision (std dev of difference): 0.000048
+  QC Threshold (3 * std dev): 0.000143
+
+sal:
+  Mean: 34.666543
+  Standard Deviation: 0.000451
+  Accuracy (mean difference): -0.015818
+  Precision (std dev of difference): 0.000601
+  QC Threshold (3 * std dev): 0.001802
+
+abssal:
+  Mean: 34.840939
+  Standard Deviation: 0.000453
+  Accuracy (mean difference): -0.015898
+  Precision (std dev of difference): 0.000604
+  QC Threshold (3 * std dev): 0.001811
+
+press:
+  Mean: -999.000000
+  Standard Deviation: 0.000000
+  Accuracy (mean difference): 0.000000
+  Precision (std dev of difference): 0.000000
+  QC Threshold (3 * std dev): 0.000000
+

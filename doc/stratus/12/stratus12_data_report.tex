@@ -1,8 +1,9 @@
-% pdflatex -cnf-line="include texmf.cnf" stratus12_data_report.tex
+% compile with:
+% pdflatex -cnf-line="include texmf.cnf" STRATUS12_data_report.tex
 % Deployment overlap information
-\newcommand{\HasNextDeploymentOverlap}{no}  % Set to "yes" because Stratus 12 overlaps with Stratus 13
+\newcommand{\HasNextDeploymentOverlap}{no}  % Set to "yes" because STRATUS 12 overlaps with STRATUS 13
 \newcommand{\OverlapDuration}{}  % Optional: Duration of overlap if you want to include it
-% pdflatex -cnf-line="include texmf.cnf" stratus12_data_report.tex
+% pdflatex -cnf-line="include texmf.cnf" STRATUS12_data_report.tex
 \documentclass[11pt]{article}
 \usepackage{geometry}
 \usepackage{graphicx}
@@ -14,8 +15,8 @@
 
 \geometry{a4paper, margin=1in}
 
-% Commands to easily modify the document for different Stratus projects
-\newcommand{\projectname}{stratus}  % Default project name
+% Commands to easily modify the document for different STRATUS projects
+\newcommand{\projectname}{STRATUS}  % Default project name
 \newcommand{\caseyear}{2012}  % Project year
 \newcommand{\casenumber}{12}  % Case number
 \newcommand{\nextcasenumber}{13}  % Next case number for overlap documentation
@@ -34,6 +35,14 @@
 % Instrument information
 \newcommand{\FirstInstrument}{1876}
 \newcommand{\SecondInstrument}{1879}
+
+\newcommand{\pressureavailable}{no}  % "yes" or "no" - whether pressure data is available for this deployment
+
+% Define the pressure note that will appear in figure captions
+\newcommand{\pressurenote}{}
+\ifthenelse{\equal{\pressureavailable}{no}}{
+    \renewcommand{\pressurenote}{ The pressure data is not available for this deployment, so the pressure variable is not shown in this figure.}
+}{}
 
 % Define variables for error statistics - these would need to be updated with actual values
 \newcommand{\MeanDiffTemp}{0.0001}  % Mean temperature difference between sensors
@@ -71,9 +80,21 @@
 \newpage
 
 \section{Introduction}
-This document details the preprocessing, quality control, 
-and analysis steps for the deep temperature and salinity (T/S) data from \projectname{} \casenumber{} moorings.
-This report is supplemented by the Python code used in the analysis.
+
+\subsection{Project Overview}
+
+About a decade ago the community involved in  efforts to improve how well models
+represented the downward mixing of heat and other properties into the deep ocean
+recognized the need for additional observations from the deep ocean.  Such measurements
+could be assimilated into ocean models and also used to assess the realism of, for example,
+storage of heat in the deep ocean.  OceanSITES, the international collaborative effort to collect sustained time series observations at open ocean sites under the Global Ocean Observing System
+(GOOS), launched an effort to coordinate deployment temperature and salinity
+recorders in the deep ocean on OceanSITES moorings. Funds were raised for a pool of
+instruments and individual investigators also contributed instruments. The Upper Ocean
+Processes Group at WHOI joined this effort and committed to deploy pairs of temperature and salinity recorders on its NTAS, Stratus, and WHOTS Ocean Reference Stations.  This page is set
+up to share quality controlled temperature data from the Stratus and NTAS deployments from
+2012 onwards.  At this point, quality control efforts have produced temperature time series with
+error estimates.  Technical challenges with sensors and quality control on conductivity and salinity continue, and the salinity data are not yet ready for release.
 
 % Include a summary of instruments and data quality for this deployment
 \subsection{Deployment Summary}
@@ -85,6 +106,10 @@ This report is supplemented by the Python code used in the analysis.
     % \item \textbf{Instrument Height Above Bottom:} 39 meters
     \item \textbf{Overlap with Next Deployment (\projectname{} \nextcasenumber{}):} \HasNextDeploymentOverlap{}
 \end{itemize}
+
+This document details the preprocessing, quality control, 
+and analysis steps for the deep temperature and salinity (T/S) data from \projectname{} \casenumber{} moorings.
+This report is supplemented by the Python code used in the analysis.
 
 %################################################## Stage 1: Pre-Processing ########################################################
 \section{Pre-Processing}
@@ -108,7 +133,7 @@ so this needs to be done before truncation.
 
 Potential timing errors are addressed by referring to the "recover.xls" spreadsheet on buoy5, 
 under the "subsurface" tab, to compare spike start and end times with the apparent time in the instrument data. 
-If the offset is greater than one sample interval (+/- 5 min for Stratus deployments), 
+If the offset is greater than one sample interval (+/- 5 min for STRATUS deployments), 
 it indicates misalignment in time, and the data is linearly interpolated to a new time base to synchronize instruments.
 
 % Discussion on the alignment of recorded spike times with observed data
@@ -166,7 +191,7 @@ which are used to truncate the data.
 \subsection{Data Truncation}
 \begin{itemize}
 \item Read anchor over time and release fired time from metadata.
-\item Truncate datasets to include only data between 4 hours after anchor over time and release fired time.
+\item Truncated dataset starts 4 hours after anchor over time and ends at release fired time.
 \item Plot and inspect temperature time series for both \FirstInstrumentType{} instruments. 
 \item Ensure that truncation has successfully excluded data from before deployment and after recovery. 
 \item The time-corrected (if needed) and truncated data files are saved after this stage of processing. 
@@ -181,13 +206,17 @@ starting 4 hours after anchor deployment time and ending at the release fired ti
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.8\textwidth]{\imagepath/\projectname\casenumber_\FirstInstrument_vs_\SecondInstrument_comparison.png}
-    \caption{Deployment and recovery timing analysis for \projectname{} \casenumber{}, comparing instruments \FirstInstrumentType{} \FirstInstrument{} and \FirstInstrumentType{} \SecondInstrument{}. This figure shows the expected time window of good data after truncation, starting 4 hours after anchor deployment time and ending at the release fired time.}
+    \caption{Deployment and recovery timing analysis for \projectname{} \casenumber{}, comparing instruments \FirstInstrumentType{} \FirstInstrument{} and \FirstInstrumentType{} \SecondInstrument{}. This figure shows the expected time window of good data after truncation, starting 4 hours after anchor deployment time and ending at the release fired time.\pressurenote}
     \label{fig:instrument_comparison}
 \end{figure}
 
 \subsection{Re-calculate Salinity}
-Pressure is either not available or has drifted significantly in the \FirstInstrumentType{} instruments,
-which can lead to inaccurate salinity calculations. 
+\ifthenelse{\equal{\pressureavailable}{yes}}{
+Pressure data is available for this deployment but may have drifted significantly in the \FirstInstrumentType{} instruments,
+which can lead to inaccurate salinity calculations.
+}{
+Pressure data is not available for this deployment,
+}
 Therefore, we recalculate salinity using a fixed pressure value based on the instrument depth.
 For \projectname{} \casenumber{}, salinity was recalculated using the following procedure:
 
@@ -250,6 +279,12 @@ For \projectname{} \casenumber{} processing, the window size was \WindowSize{} p
 See Figs.\ref{fig:first_instrument} and \ref{fig:second_instrument} for examples of the original and cleaned plots for temperature, salinity, absolute salinity, conductivity, and pressure for both instruments.
 These serve as a basis for collaborative review and further data correction.
 
+The spikes removed from the datasets are shown in the table below.
+
+% Simply include the project-specific spike removal file
+% Note: You'll need to create a spike_stats.tex file for STRATUS12
+\input{spike_stats.tex}
+
 \subsection{Difference Statistics}
 When both instruments are available and functional, 
 the mean and standard deviation of the difference between sensors and of individual sensors are computed. 
@@ -259,7 +294,7 @@ The difference statistics are computed after spike removal to avoid contaminatio
 The difference statistics are shown in the tables below.
 
 % Simply include the project-specific difference statistics file
-% Note: You'll need to create a diff_stats.tex file for stratus12
+% Note: You'll need to create a diff_stats.tex file for STRATUS12
 \input{diff_stats.tex}
 
 % Note about metadata in NetCDF files
@@ -321,7 +356,7 @@ The data has been processed through several stages:
 \begin{itemize}
     \item Time correction and data truncation to isolate the deployment period
     \item Quality control including spike removal and difference statistics
-    \item Recalculation of salinity using the TEOS-10 algorithm at the instrument depth
+    \item Recalculation of salinity using the TEOS-10 algorithm at the instrument depth with observed temperature and conductivity
     \item Merging of data from two co-located instruments
 \end{itemize}
 

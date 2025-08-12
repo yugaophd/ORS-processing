@@ -3,7 +3,7 @@
 % pdflatex -cnf-line="include texmf.cnf" stratus13_data_report.tex
 % Deployment overlap information
 \newcommand{\HasNextDeploymentOverlap}{no}  % "yes" or "no" - determines whether to include overlap section
-\newcommand{\OverlapDuration}{}  % Optional: Duration of overlap if you want to include it\documentclass[11pt]{article}
+% \newcommand{\OverlapDuration}{}  % Optional: Duration of overlap if you want to include it
 \usepackage{geometry}
 \usepackage{graphicx}
 \usepackage{amsmath}
@@ -16,15 +16,15 @@
 
 % Commands to easily modify the document for different Stratus projects
 \newcommand{\projectname}{stratus}  % Default project name
+\newcommand{\displayprojectname}{STRATUS}
 \newcommand{\caseyear}{2014}  % Default year
 \newcommand{\casenumber}{13}  % Default case number
-% \newcommand{\nextcasenumber}{14}  % Next case number for overlap documentation
 \newcommand{\previouscasenumber}{12}  % Next case number for overlap documentation
 \newcommand{\imagepath}{/Users/yugao/UOP/ORS-processing/img}  % Path to images
 
 % Instrument type configuration
-\newcommand{\FirstInstrumentType}{SBE37}  % Type of first instrument (SBE37 or SBE16)
-\newcommand{\SecondInstrumentType}{SBE37}  % Type of second instrument (SBE37 or SBE16)
+\newcommand{\FirstInstrumentType}{SBE16}  % Type of first instrument (SBE37 or SBE16)
+\newcommand{\SecondInstrumentType}{SBE16}  % Type of second instrument (SBE37 or SBE16)
 
 % Deployment and recovery information
 \newcommand{\DeploymentSpike}{02/28/2014 13:27} % the actual deployment spike time by data
@@ -35,8 +35,19 @@
 % Instrument information
 \newcommand{\FirstInstrument}{1873}
 \newcommand{\SecondInstrument}{1875}
-\newcommand{\MergedInstrumentInfo}{\SecondInstrumentType{} \SecondInstrument}
+% merged instrument information
+\newcommand{\PreviousDeploymentInstrument}{\FirstInstrumentType{} 1876}  % Instrument from previous deployment used in merge
+\newcommand{\CurrentDeploymentInstrument}{\SecondInstrumentType{} \SecondInstrument}  % Instrument from current deployment used in merge
+
 % {\FirstInstrumentType{} \FirstInstrument{} (primary) and \SecondInstrumentType{} \SecondInstrument{} (secondary, for validation)}  % Document which instruments were merged
+
+\newcommand{\pressureavailable}{no}  % "yes" or "no" - whether pressure data is available for this deployment
+
+% Define the pressure note that will appear in figure captions
+\newcommand{\pressurenote}{}
+\ifthenelse{\equal{\pressureavailable}{no}}{
+    \renewcommand{\pressurenote}{ The pressure data is not available for this deployment, so the pressure variable is not shown in this figure.}
+}{}
 
 % Define variables for error statistics
 \newcommand{\MeanDiffTemp}{0.0001}  % Mean temperature difference between sensors
@@ -63,7 +74,7 @@
 \newcommand{\WindowSize}{12}  % Window size for spike detection
 \newcommand{\ThresholdValue}{3}  % Threshold multiplier for standard deviation
 
-\title{Data Report for \projectname{} \casenumber{}}
+\title{\displayprojectname{} \casenumber{} Data Report}
 \author{Yu Gao}
 \date{\today}
 
@@ -83,11 +94,11 @@ This report is supplemented by the Python code used in the analysis.
 \begin{itemize}
     \item \textbf{Deployment Period:} From \DeploymentSpike{} to \RecoverySpike{}
     \item \textbf{Instruments Used:} \FirstInstrumentType{} \FirstInstrument{} and \SecondInstrumentType{} \SecondInstrument{}
-    \item \textbf{Merged Data:} \MergedInstrumentInfo{} was selected for the merged dataset
+    \item \textbf{Merged Data:} \CurrentDeploymentInstrument{} was selected for the merged dataset
     \item \textbf{Overlap with Previous Deployment (\projectname{} \previouscasenumber{}):} \HasNextDeploymentOverlap{}
-    \ifthenelse{\equal{\OverlapDuration}{}}{}{
-        \item \textbf{Overlap Duration:} \OverlapDuration{}
-    }
+    % \ifthenelse{\equal{\OverlapDuration}{}}{}{
+    %     \item \textbf{Overlap Duration:} \OverlapDuration{}
+    % }
 \end{itemize}
 
 %################################################## Stage 1: Pre-Processing ########################################################
@@ -155,7 +166,8 @@ which are used to truncate the data.
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.8\textwidth]{\imagepath/\projectname\casenumber_\FirstInstrument_deployment_recovery.png}
-\caption{Detailed view of temperature changes during deployment and recovery phases for \projectname{} \casenumber{}, showing both instruments \FirstInstrument{} and \SecondInstrument{}.}
+\caption{Detailed view of temperature changes during deployment and recovery phases for \projectname{} \casenumber{}, 
+showing instrument \FirstInstrumentType{} \FirstInstrument{}.}
 \label{fig:deployment_recovery}
 \end{figure}
 
@@ -172,7 +184,7 @@ which are used to truncate the data.
 \subsection{Data Truncation}
 \begin{itemize}
 \item Read anchor over time and release fired time from metadata.
-\item Truncate datasets to include only data between 4 hours after anchor over time and release fired time.
+\item Truncated dataset starts 4 hours after anchor over time and ends at release fired time.
 \item Plot and inspect temperature time series for both SBE37 instruments. 
 \item Ensure that truncation has successfully excluded data from before deployment and after recovery. 
 \item The time-corrected (if needed) and truncated data files are saved after this stage of processing. 
@@ -187,13 +199,21 @@ starting 4 hours after anchor deployment time and ending at the release fired ti
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.8\textwidth]{\imagepath/\projectname\casenumber_\FirstInstrument_vs_\SecondInstrument_comparison.png}
-    \caption{Deployment and recovery timing analysis for \projectname{} \casenumber{}, comparing instruments SBE37 \FirstInstrument{} and SBE37 \SecondInstrument{}. This figure shows the expected time window of good data after truncation, starting 4 hours after anchor deployment time and ending at the release fired time.}
+    \caption{Deployment and recovery timing analysis for \projectname{} \casenumber{}, 
+    comparing instruments SBE37 \FirstInstrument{} and SBE37 \SecondInstrument{}. 
+    This figure shows the expected time window of good data after truncation.
+    Truncated dataset starts 4 hours after anchor over time and ends at release fired time.\pressurenote}
     \label{fig:instrument_comparison}
 \end{figure}
 
 \subsection{Re-calculate Salinity}
-Pressure is either not available or has drifted significantly in the SBE37 instruments,
-which can lead to inaccurate salinity calculations. 
+\ifthenelse{\equal{\pressureavailable}{yes}}{
+Pressure data is available for this deployment but may have drifted significantly 
+in the \FirstInstrumentType{} instruments,
+which can lead to inaccurate salinity calculations.
+}{
+Pressure data is not available for this deployment,
+}
 Therefore, we recalculate salinity using a fixed pressure value based on the instrument depth.
 For \projectname{} \casenumber{}, salinity was recalculated using the following procedure:
 
@@ -257,6 +277,12 @@ For \projectname{} \casenumber{} processing, the window size was \WindowSize{} p
 % The data before and after spike removal is shown in Figs.\ref{fig:spikes_removed_first} and \ref{fig:spikes_removed_second}.
 See Figs.\ref{fig:first_instrument} and \ref{fig:second_instrument} for examples of the original and cleaned plots for temperature, salinity, absolute salinity, conductivity, and pressure for both instruments.
 These serve as a basis for collaborative review and further data correction.
+
+The spikes removed from the datasets are shown in the table below.
+
+% Simply include the project-specific spike removal file
+% Note: You'll need to create a spike_stats.tex file for STRATUS12
+\input{spike_stats.tex}
 
 \subsection{Difference Statistics}
 When both instruments are available and functional, 
@@ -325,36 +351,27 @@ and \texttt{\projectname\casenumber\_\SecondInstrument\_cleaned.nc}
         a Human-In-The-Loop (HITL) evaluation is done for the transitions at the start and end of the deployment, 
         and data records with the least discrepancy between deployments are chosen to be merged. 
         \item If one sensor is obviously bad or does not have a complete record, the other sensor is used.
-        \item For \projectname{} \casenumber{}, \MergedInstrumentInfo{} was used for the merged dataset.
+        \item For \projectname{} \casenumber{}, \CurrentDeploymentInstrument{} was selected for the merged dataset.
         \item If the sampling rate of the two time series is different, the time series with the higher sampling rate is resampled to match the lower sampling rate.
     \end{itemize}
 \end{itemize}
 
 \subsection{Overlap Analysis}
+
+% Add survey locations map figure - can be adapted for future merges
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{\imagepath/deployment_maps/stratus\previouscasenumber_to_stratus\casenumber_locations.png}
+    \caption{Deployment locations for Stratus moorings from Stratus \previouscasenumber{} to Stratus \casenumber{}. 
+    The map shows the anchor positions determined during deployment surveys. }
+    \label{fig:deployment_locations}
+\end{figure}
+
+\input{deployment_distance.tex}
+Figure \ref{fig:deployment_locations} shows the positions of the Stratus \previouscasenumber{} and \casenumber{} moorings, separated by approximately the distance mentioned above.
+
+
 % Conditional section based on whether there's overlap with the next deployment
-\ifthenelse{\equal{\HasNextDeploymentOverlap}{yes}}{
-    % If there is overlap
-    There is an overlap between \projectname{} \previouscasenumber{} and \projectname{} \casenumber{} deployments. 
-    The following steps were taken to merge the datasets:
-    \begin{itemize}
-    \item \textbf{Overlap Determination:} Overlap was detected between the end of \projectname{} \previouscasenumber{} 
-    (using SBE37 \FirstInstrument{}) and the start of \projectname{} \casenumber{}.
-    
-    \item \textbf{Merging Method:} Data were merged at the time point with minimum mean difference 
-    over a 6-hour rolling window to ensure a smooth transition between deployments. 
-    % Note that SBE37 \FirstInstrument{} was selected as the best time series from \projectname{} \casenumber{} 
-    % in the previous processing step.
-    \end{itemize}
-    }
-{
-    % If there is no overlap
-    There is no overlap between \projectname{} \previouscasenumber{} and \projectname{} \casenumber{} deployments. 
-    As a result, we chose the two time series with minimal differences to merge, 
-    and there is a gap in the continuous data record.
-}
-
-The merged dataset is visualized in Fig.\ref{fig:merged_dataset}.
-
 % Check if overlap image exists before including it
 \IfFileExists{\imagepath/overlap_\projectname\previouscasenumber_and_\projectname\casenumber.png}{
     \begin{figure}[H]
@@ -372,12 +389,39 @@ The merged dataset is visualized in Fig.\ref{fig:merged_dataset}.
     \end{figure}
 }
 
+\ifthenelse{\equal{\HasNextDeploymentOverlap}{yes}}{
+    % If there is overlap
+    There is an overlap between \projectname{} \previouscasenumber{} and \projectname{} \casenumber{} deployments. 
+    The following steps were taken to merge the datasets:
+    \begin{itemize}
+    \item \textbf{Overlap Determination:} Overlap was detected between the end of \projectname{} \previouscasenumber{} 
+    (using \PreviousDeploymentInstrument{}) and the start of \projectname{} \casenumber{}.
+    
+    \item \textbf{Merging Method:} Data were merged at the time point with minimum mean difference 
+    over a 6-hour rolling window to ensure a smooth transition between deployments. 
+    For creating the continuous record, \PreviousDeploymentInstrument{} from \projectname{} \previouscasenumber{} 
+    was merged with \CurrentDeploymentInstrument{} from \projectname{} \casenumber{}.
+    \end{itemize}
+    }
+{
+    % If there is no overlap
+    Figure \ref{fig:overlap} shows there is no overlap between \projectname{} \previouscasenumber{} and \projectname{} \casenumber{}.
+    As a result, we chose the two time series with minimal differences to merge, 
+    and there is a gap in the continuous data record.
+}
+
+The merged dataset is visualized in Fig.\ref{fig:merged_dataset}.
+
 % Check if merged dataset image exists before including it
 \IfFileExists{\imagepath/merged_dataset_\projectname\previouscasenumber_and_\projectname\casenumber.png}{
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.8\textwidth]{\imagepath/merged_dataset_\projectname\previouscasenumber_and_\projectname\casenumber.png}
-        \caption{Merged dataset of \projectname{} \previouscasenumber{} and \projectname{} \casenumber{} showing the seamless transition at the merge point. This dataset incorporates all previous merges in the time series.}
+        \includegraphics[width=0.8\textwidth]{\imagepath/merged_dataset_\projectname12_to_\projectname\casenumber.png}
+        \caption{Merged dataset of \projectname{} \previouscasenumber{} and \projectname{} \casenumber{} 
+        showing the seamless transition at the merge point. 
+        This dataset combines data from the selected instrument (\PreviousDeploymentInstrument{}) 
+        from \projectname{} \previouscasenumber{} and \CurrentDeploymentInstrument{} from \projectname{} \casenumber{}. 
+        This dataset incorporates all previous merges in the time series. The gray dashed lines indicate the merge points.}
         \label{fig:merged_dataset}
     \end{figure}
 }{
@@ -388,6 +432,7 @@ The merged dataset is visualized in Fig.\ref{fig:merged_dataset}.
         \label{fig:merged_dataset}
     \end{figure}
 }
+
 
 \section{Documentation and Archiving}
 Finalized data sets are documented extensively and prepared for inclusion on the project website. 
@@ -402,7 +447,7 @@ The data has been processed through several stages:
 \begin{itemize}
     \item Time correction and data truncation to isolate the deployment period
     \item Quality control including spike removal and difference statistics
-    \item Recalculation of salinity using the TEOS-10 algorithm at the instrument depth
+    \item Recalculation of salinity using the TEOS-10 algorithm at the instrument depth with observed temperature and conductivity
     \item Merging with adjacent deployment data % where overlap exists
 \end{itemize}
 
