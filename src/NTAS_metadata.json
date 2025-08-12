@@ -1,0 +1,50 @@
+{
+  "attribute_mapping": {
+    "site": "site_code",
+    "platform_deploymentcruise": "platform_deployment_cruise_name",
+    "platform_recoverycruise": "platform_recovery_cruise_name",
+    "global_institution": "institution",
+    "global_data_assembly_center": "data_assembly_center",
+    "global_source": "source",
+    "global_naming_authority": "naming_authority",
+    "global_cdm_data_type": "cdm_data_type",
+    "global_wmo_platform_code": "wmo_platform_code",
+    "platform_water_depth_m": "water_depth_from_mooring_diagram_m"
+  },
+  "fixed_attributes": {
+    "data_type": "OceanSITES time-series data",
+    "format_version": "1.4",
+    "network": "OceanSITES"
+  },
+  "dynamic_attributes": {
+    "platform_code": "NTAS"
+  },
+  "variable_attributes": {
+    "sea_water_temperature": {
+      "units": "°C",
+      "long_name": "sea water temperature",
+      "comment": "Temperature measured directly by the instrument sensor."
+    },
+    "sea_water_practical_salinity": {
+      "units": "psu",
+      "long_name": "sea water practical salinity",
+      "comment": "Practical salinity calculated using the TEOS-10 algorithm at the fixed instrument depth."
+    },
+    "sea_water_absolute_salinity": {
+      "units": "g/kg",
+      "long_name": "sea water absolute salinity",
+      "comment": "Absolute salinity calculated using the TEOS-10 algorithm at the fixed instrument depth."
+    },
+    "sea_water_pressure": {
+      "units": "dbar",
+      "long_name": "sea water pressure",
+      "comment": "Pressure comes from instrument without any further processing."
+    },
+    "sea_water_electrical_conductivity": {
+      "units": "S/m",
+      "long_name": "sea water conductivity",
+      "comment": "Conductivity measured directly by the instrument sensor."
+    }
+  },
+  "default_fill_value": -99999.0
+}

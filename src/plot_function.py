@@ -167,7 +167,7 @@ def plot_spike_data(deployment_spike_data,
             ax1.grid(True, alpha=0.3)
             ax1.xaxis.set_major_locator(MaxNLocator(10))
             ax1.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d %H:%M'))
-            ax1.legend(loc='upper left')
+            ax1.legend(loc='center left')
     else:
         message = 'No deployment spike times available' if deployment_spike_start is None else 'No deployment data available'
         ax1.text(0.5, 0.5, message, ha='center', va='center', transform=ax1.transAxes)
@@ -527,7 +527,7 @@ def plot_merged_dataset(dataset, save_path, case_name0=None, case_name1=None, fi
                       annotate_merge_points=False):
     """
     Plot merged dataset with multiple variables and optional merge point lines.
-    Now includes a panel showing distance from the original Stratus 12 position.
+    Includes a panel showing distance from Stratus 12 and between consecutive sites.
     """
     # Default variables to plot if not specified
     if variables is None:
@@ -589,17 +589,29 @@ def plot_merged_dataset(dataset, save_path, case_name0=None, case_name1=None, fi
         axs[i].legend()
         axs[i].grid(True)
     
-    # Calculate and plot distance from Stratus 12
+    # Calculate distances
     distance_da = calculate_distance_from_reference(dataset)
+    consecutive_distance_da = calculate_consecutive_distances(dataset)
+    
     if distance_da is not None:
         # Use the last axis for distance
         dist_ax = axs[-1]
         dist_ax.plot(distance_da.time, distance_da, color='darkred', drawstyle='steps-post', 
                    linewidth=2, label='Distance from STRATUS 12')
-        dist_ax.set_title('Distance from STRATUS 12 anchor position')
-        dist_ax.set_ylabel('Distance (km)')
+        dist_ax.set_title('STRATUS Site Distances')
+        dist_ax.set_ylabel('Distance from STRATUS 12 (km)')
         dist_ax.grid(True)
-        dist_ax.legend()
+        dist_ax.legend(loc='upper left')
+        
+        # Add second axis for consecutive distances
+        if consecutive_distance_da is not None:
+            dist_ax2 = dist_ax.twinx()  # Create a second y-axis 
+            dist_ax2.plot(consecutive_distance_da.time, consecutive_distance_da, 
+                          color='navy', drawstyle='steps-post', linewidth=1.8, 
+                          linestyle='-', label='Distance from previous deployment site')
+            dist_ax2.set_ylabel('Distance from previous deployment site (km)', color='navy')
+            dist_ax2.tick_params(axis='y', colors='navy')
+            dist_ax2.legend(loc='center left')
     else:
         axs[-1].text(0.5, 0.5, 'Distance data not available',
                     ha='center', va='center', transform=axs[-1].transAxes)
@@ -619,18 +631,12 @@ def plot_merged_dataset(dataset, save_path, case_name0=None, case_name1=None, fi
     
     # Adjust layout
     plt.tight_layout()
-    if 'time_coverage_start' in dataset.attrs:  # Add space for suptitle
+    if 'time_coverage_start' in dataset.attrs:
         plt.subplots_adjust(top=0.95)
     
-    # Generate save path if specific names provided
-    if case_name0 and case_name1 and '{' in save_path:
-        actual_save_path = save_path.format(case_name0=case_name0, case_name1=case_name1)
-    else:
-        actual_save_path = save_path
-    
     # Save figure
-    plt.savefig(actual_save_path, dpi=300, bbox_inches='tight')
-    print(f"Figure saved to {actual_save_path}")
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    print(f"Figure saved to {save_path}")
     
     return fig
 def calculate_distance_timeseries(dataset):
@@ -762,17 +768,6 @@ def calculate_distance_from_reference(dataset):
                         print(f"Could not parse merge point: {point} - {e}")
                         continue
         
-        # Skip if we don't have enough merge points (need at least 2: start of first dataset and first actual merge)
-        if len(merge_points) < 2:
-            print("Not enough merge points for distance calculation")
-            return None
-            
-        # CRITICAL CHANGE: Skip the first merge point (start of first dataset)
-        # and use the second merge point (start of second dataset) as the actual merge
-        second_merge_time = merge_points[1]  # This is the actual merge point
-        
-        # Calculate distances only for points after the second merge point
-        
         # Add a check to ensure we have proper ordering
         merge_points = sorted(merge_points)
         
@@ -781,7 +776,7 @@ def calculate_distance_from_reference(dataset):
             time_i = to_naive_datetime(time)
             
             # Determine which segment this time belongs to
-            segment_idx = 0  # Default to segment 0 (Stratus 12)
+            segment_idx = 0  # Default to segment 0 (First site)
             for j, merge_point in enumerate(merge_points[1:], 1):  # Skip first merge point
                 if time_i >= merge_point:
                     segment_idx = j
@@ -792,8 +787,8 @@ def calculate_distance_from_reference(dataset):
             elif segment_idx < len(latitudes):
                 lat2 = latitudes[segment_idx]  # Use appropriate position
                 lon2 = longitudes[segment_idx]
+                # USE THE SAME FUNCTION FOR BOTH DISTANCES
                 distances[i] = geodesic((ref_lat, ref_lon), (lat2, lon2)).kilometers
-        
         
         return xr.DataArray(
             data=distances,
@@ -806,30 +801,140 @@ def calculate_distance_from_reference(dataset):
         print(f"Error calculating distances: {e}")
         return None
 
-def haversine_distance(lat1, lon1, lat2, lon2):
-    """
-    Calculate the great circle distance between two points 
-    on the earth (specified in decimal degrees)
-    
-    Parameters:
-    -----------
-    lat1, lon1 : float
-        Latitude and longitude of first point in decimal degrees
-    lat2, lon2 : float
-        Latitude and longitude of second point in decimal degrees
+def calculate_consecutive_distances(dataset):
+    """Calculate distances between consecutive deployment sites."""
+    try:
+        # Get latitude and longitude from dataset attributes
+        lat_str = dataset.attrs.get('latitude_anchor_survey', '')
+        lon_str = dataset.attrs.get('longitude_anchor_survey', '')
         
-    Returns:
-    --------
-    float
-        Distance in kilometers
+        if not lat_str or not lon_str:
+            print("Missing coordinate attributes for consecutive distance calculation")
+            return None
+        
+        # Parse comma-separated coordinates
+        try:
+            latitudes = [float(lat.strip()) for lat in lat_str.split(',')]
+            longitudes = [float(lon.strip()) for lon in lon_str.split(',')]
+        except ValueError as e:
+            print(f"Error parsing coordinates for consecutive distances: {e}")
+            return None
+            
+        # Create times and distance array
+        times = dataset.time.values
+        distances = np.full(len(times), np.nan)  # Using NaN for the first segment
+        
+        # Get merge points for segmentation
+        merge_points_str = dataset.attrs.get('merge_point', '')
+        merge_points = []
+        
+        if merge_points_str:
+            for point in merge_points_str.split(','):
+                point = point.strip()
+                if point and point.lower() != 'none' and point.lower() != 'nat':
+                    try:
+                        dt_point = to_naive_datetime(point)
+                        if dt_point is not None:
+                            merge_points.append(dt_point)
+                    except Exception as e:
+                        print(f"Could not parse merge point: {point} - {e}")
+                        continue
+        
+        # Skip if we don't have enough merge points or sites
+        if len(merge_points) < 2 or len(latitudes) < 2:
+            print("Not enough merge points or sites for consecutive distance calculation")
+            return None
+            
+        # Sort merge points
+        merge_points = sorted(merge_points)
+        
+        # Calculate distances between consecutive sites
+        for i, time in enumerate(times):
+            time_i = to_naive_datetime(time)
+            
+            # Determine which segment this time belongs to
+            segment_idx = 0  # Default to segment 0 (Stratus 12)
+            for j, merge_point in enumerate(merge_points[1:], 1):  # Skip first merge point
+                if time_i >= merge_point:
+                    segment_idx = j
+            
+            # Skip first segment (keep as NaN)
+            if segment_idx == 0:
+                continue
+            elif segment_idx < len(latitudes):
+                # Calculate distance between THIS site and PREVIOUS site
+                current_idx = segment_idx
+                previous_idx = segment_idx - 1
+                
+                lat1 = latitudes[previous_idx]
+                lon1 = longitudes[previous_idx]
+                lat2 = latitudes[current_idx]  
+                lon2 = longitudes[current_idx]
+                
+                # USE THE SAME FUNCTION FOR BOTH DISTANCES
+                distances[i] = geodesic((lat1, lon1), (lat2, lon2)).kilometers
+        
+        return xr.DataArray(
+            data=distances,
+            dims=["time"],
+            coords={"time": dataset.time},
+            attrs={"units": "km", "long_name": "Distance between consecutive deployment sites"}
+        )
+        
+    except Exception as e:
+        print(f"Error calculating consecutive distances: {e}")
+        return None
+def plot_deployment_locations():
     """
-    # Convert decimal degrees to radians
-    lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
+    Plots the locations of deployments on a map, coloring by deployment number.
+    """
+    # Extract unique deployments
+    deployments = list(set([dep.strip() for dep in 
+                            ', '.join([ds.attrs.get('deployment'), ds.attrs.get('merge_point')]).split(', ') 
+                            if dep and dep != 'None']))
     
-    # Haversine formula
-    dlon = lon2 - lon1
-    dlat = lat2 - lat1
-    a = np.sin(dlat/2)**2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon/2)**2
-    c = 2 * np.arcsin(np.sqrt(a))
-    r = 6371  # Radius of earth in kilometers
-    return c * r
+    # Sort deployments numerically
+    deployments.sort(key=lambda x: int(x.split()[-1]))
+    
+    # Create a figure
+    plt.figure(figsize=(12, 10))
+    
+    # Define color map
+    cmap = plt.get_cmap("tab10", len(deployments))  # Use tab10 colormap, limited to number of deployments
+    
+    # Plot each deployment location
+    for i, deployment in enumerate(deployments):
+        # Extract latitude and longitude for this deployment
+        lat_str = dataset.attrs.get(f'latitude_{deployment}', '')
+        lon_str = dataset.attrs.get(f'longitude_{deployment}', '')
+        
+        if lat_str and lon_str:
+            try:
+                lat = float(lat_str)
+                lon = float(lon_str)
+                
+                # Plot the location
+                plt.scatter(lon, lat, 
+                            color=cmap(i),  # Use colormap
+                            s=100,  # Increased size for visibility
+                            label=deployment,
+                            edgecolor='black', linewidth=1.5)
+            except ValueError as e:
+                print(f"Error plotting deployment {deployment}: {e}")
+                continue
+    
+    # Add labels and legend
+    plt.title('Deployment Locations', fontsize=16)
+    plt.xlabel('Longitude')
+    plt.ylabel('Latitude')
+    plt.legend(title='Deployments', bbox_to_anchor=(1.05, 1), loc='upper left')
+    
+    # Show grid
+    plt.grid(True, linestyle='--', alpha=0.7)
+    
+    # Adjust layout
+    plt.tight_layout()
+    
+    # Save the figure
+    plt.savefig('deployment_locations.png', dpi=300)
+    plt.close()

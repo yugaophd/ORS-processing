@@ -13,7 +13,7 @@ import pandas as pd
 os.chdir('/Users/yugao/UOP/ORS-processing/src')
 from metadata import create_json, process_attributes_direct
 from netcdf_sbe37 import read_mat_file
-from util import create_xarray_dataset, process_attributes_direct, fill_or_create_variables 
+from util import create_xarray_dataset, process_attributes_direct
 
 # %%
 # required input: case name, water depth and spike time
@@ -123,11 +123,11 @@ valid_time_window2.attrs['platform_data_start_time'] = time_coverage_start_str2
 
 # %%
 # carry forward time series for all 5 variables (temp, cond, sal, abs sal, press) 
-# even if they don’t exist (e.g. set to NaN or -999)
+# even if they don’t exist (e.g. set to NaN or -9999.0)
 # Fill missing data or create non-existent variables in an xarray Dataset.
 
-fill_or_create_variables(valid_time_window, ['temp', 'cond', 'sal', 'abssal', 'press'])
-fill_or_create_variables(valid_time_window2, ['temp', 'cond', 'sal', 'abssal', 'press'])
+# fill_or_create_variables(valid_time_window, ['temp', 'cond', 'sal', 'abssal', 'press'])
+# fill_or_create_variables(valid_time_window2, ['temp', 'cond', 'sal', 'abssal', 'press'])
 
 # %%
 # save the truncated and filled dataset to data_path
@@ -148,6 +148,107 @@ print(f'Instrument SN2: {instrument_SN2}')
 
 file_path = os.path.join(directory_path, f'{case_name}_{instrument_SN}_truncated.nc')
 file_path2 = os.path.join(directory_path, f'{case_name}_{instrument_SN2}_truncated.nc')
+# add depth to the attributes
+# water depth from ship corrected - instrument height above bottom
+valid_time_window.attrs['water_depth_from_ship_uncorrected_m'] = water_depth_from_ship_corrected - instrument_height_above_bottom
+valid_time_window2.attrs['water_depth_from_ship_uncorrected_m'] = water_depth_from_ship_corrected - instrument_height_above_bottom
+valid_time_window.attrs['water_depth_from_ship_corrected_m'] = water_depth_from_ship_corrected - instrument_height_above_bottom
+valid_time_window2.attrs['water_depth_from_ship_corrected_m'] = water_depth_from_ship_corrected - instrument_height_above_bottom
+
+valid_time_window.attrs['water_depth_from_mooring_diagram_m'] = water_depth_from_mooring_diagram
+valid_time_window2.attrs['water_depth_from_mooring_diagram_m'] = water_depth_from_mooring_diagram
+
+valid_time_window.attrs['instrument_height_above_bottom_m'] = instrument_height_above_bottom
+valid_time_window2.attrs['instrument_height_above_bottom_m'] = instrument_height_above_bottom
+
+# add time coverage start and end to the attributes
+valid_time_window.attrs['time_coverage_start'] = time_coverage_start_str
+valid_time_window2.attrs['time_coverage_start'] = time_coverage_start_str2
+valid_time_window.attrs['time_coverage_end'] = str(release_fired_time)
+valid_time_window2.attrs['time_coverage_end'] = str(release_fired_time2)
+
+# %% 
+# Change the variable names according to the CF standard names
+
+# For valid_time_window
+valid_time_window = valid_time_window.rename({
+    'temp': 'sea_water_temperature',
+    'sal': 'sea_water_practical_salinity',
+    'press': 'sea_water_pressure',
+    'abssal': 'sea_water_absolute_salinity',
+    'cond': 'sea_water_electrical_conductivity'
+})
+
+# For valid_time_window2
+valid_time_window2 = valid_time_window2.rename({
+    'temp': 'sea_water_temperature',
+    'sal': 'sea_water_practical_salinity',
+    'press': 'sea_water_pressure',
+    'abssal': 'sea_water_absolute_salinity',
+    'cond': 'sea_water_electrical_conductivity'
+})
+
+# %% use standardized global attributes
+# Apply reordering before saving
+from metadata import standardize_attribute_names, ensure_standard_attributes, validate_attributes
+from metadata import  add_geospatial_attributes, reorder_oceansites_attributes
+
+valid_time_window = standardize_attribute_names(valid_time_window)
+valid_time_window = ensure_standard_attributes(valid_time_window)
+
+# Add geospatial attributes
+valid_time_window = add_geospatial_attributes(valid_time_window)
+
+# Then apply reordering as the final step
+valid_time_window = reorder_oceansites_attributes(valid_time_window)
+
+# Do the same for the second dataset
+valid_time_window2 = standardize_attribute_names(valid_time_window2)
+valid_time_window2 = ensure_standard_attributes(valid_time_window2)
+valid_time_window2 = add_geospatial_attributes(valid_time_window2)
+valid_time_window2 = reorder_oceansites_attributes(valid_time_window2)
+
+# Optionally validate after everything is done
+is_valid, issues = validate_attributes(valid_time_window)
+if not is_valid:
+    print("Warning: Issues with dataset 1:")
+    for issue in issues:
+        print(f"  - {issue}")
+
+is_valid, issues = validate_attributes(valid_time_window2)
+if not is_valid:
+    print("Warning: Issues with dataset 2:")
+    for issue in issues:
+        print(f"  - {issue}")
+        
+# Add this code right before saving to NetCDF files
+# Set default fill value for all variables
+default_fill_value = 99999.0  # Using your specified fill value
+
+# Set fill values for dataset 1
+for var_name in valid_time_window.variables:
+    if var_name != 'time':  # Usually time doesn't need a fill value
+        valid_time_window[var_name].encoding['_FillValue'] = default_fill_value
+        # valid_time_window[var_name].attrs['_FillValue'] = default_fill_value
+
+# Set fill values for dataset 2
+for var_name in valid_time_window2.variables:
+    if var_name != 'time':  # Usually time doesn't need a fill value
+        valid_time_window2[var_name].encoding['_FillValue'] = default_fill_value
+        # valid_time_window2[var_name].attrs['_FillValue'] = default_fill_value
+
+# add comment of the source of salinity
+# Add more informative comment attributes
+valid_time_window['sea_water_practical_salinity'].attrs['comment'] = 'Derived from TEO-10 sw_sal calculation'
+# if 'sea_water_absolute_salinity' is not all nan:
+if np.all(np.isnan(valid_time_window['sea_water_absolute_salinity'].values)):
+    valid_time_window['sea_water_absolute_salinity'].attrs['comment'] = 'Converted from practical salinity using TEO-10 sw_sal algorithm'
+
+valid_time_window2['sea_water_practical_salinity'].attrs['comment'] = 'Derived from TEO-10 sw_sal calculation'
+# if 'sea_water_absolute_salinity' is not all nan:
+if np.all(np.isnan(valid_time_window2['sea_water_absolute_salinity'].values)):
+    valid_time_window2['sea_water_absolute_salinity'].attrs['comment'] = 'Converted from practical salinity using TEO-10 sw_sal algorithm'
+
 
 valid_time_window.to_netcdf(file_path)  # Save the modified dataset
 valid_time_window2.to_netcdf(file_path2)  # Save the modified dataset
@@ -191,7 +292,11 @@ from datetime import datetime
 
 truncated_ds, truncated_ds2 = valid_time_window, valid_time_window2
 
-variables = ['temp', 'sal', 'abssal', 'cond', 'press']
+variables = ['sea_water_temperature', 
+            'sea_water_practical_salinity', 
+            'sea_water_absolute_salinity', 
+            'sea_water_electrical_conductivity', 
+            'sea_water_pressure']
 labels = ['Temperature (°C)', 'Salinity', 'Absolute Salinity', 'Conductivity (S/m)', 'Pressure']
 panel_titles = ['Temperature Profile', 'Salinity Measurements', 'Absolute Salinity', 'Conductivity Levels', 'Pressure Profile']
 
@@ -203,22 +308,47 @@ fig, axs = plt.subplots(len(variables), 1, figsize=(12, 15), sharex=True)
 def convert_cftime_to_matplotlib(cftime_times):
     return [datetime(t.year, t.month, t.day, t.hour, t.minute, t.second) for t in cftime_times]
 
+import numpy.ma as ma
+
 for i, var in enumerate(variables):
+    
     if var in truncated_ds.variables:
         print(f'plotting {var} 1')
         time_data = convert_cftime_to_matplotlib(truncated_ds[var].time.values)
-        axs[i].plot(time_data, truncated_ds[var].values, 
+        var_data = truncated_ds[var].values
+        var_mask = np.isnan(var_data)  # Start with NaN mask
+
+        # Add _FillValue to mask if it exists
+        if hasattr(truncated_ds[var], 'encoding') and '_FillValue' in truncated_ds[var].encoding:
+            fill_val = truncated_ds[var].encoding['_FillValue']
+            var_mask = np.logical_or(var_mask, var_data == fill_val)
+
+        # Create the masked array
+        masked_data = ma.masked_array(var_data, mask=var_mask)
+
+        axs[i].plot(time_data, masked_data, 
                     label=f'{var} (SBE {instrument_SN})', color=colors[i])
     
     if var in truncated_ds2.variables:
         print(f'plotting {var} 2')
         time_data2 = convert_cftime_to_matplotlib(truncated_ds2[var].time.values)
-        axs[i].plot(time_data2, truncated_ds2[var].values, 
-                    label=f'{var} (SBE {instrument_SN2})', color=colors2[i])
+        var_data = truncated_ds2[var].values
+        var_mask = np.isnan(var_data)  # Start with NaN mask
+
+        # Add _FillValue to mask if it exists
+        if hasattr(truncated_ds[var], 'encoding') and '_FillValue' in truncated_ds[var].encoding:
+            fill_val = truncated_ds[var].encoding['_FillValue']
+            var_mask = np.logical_or(var_mask, var_data == fill_val)
+
+        # Create the masked array
+        masked_data2 = ma.masked_array(var_data, mask=var_mask)
+
+        axs[i].plot(time_data, masked_data2, 
+                    label=f'{var} (SBE {instrument_SN2})', color=colors[i])
     
     if var in truncated_ds.variables and var in truncated_ds2.variables:
         print(f'plotting {var} correlation')
-        correlation = np.corrcoef(truncated_ds[var].values, truncated_ds2[var].values)[0, 1]
+        correlation = np.corrcoef(masked_data, masked_data2)[0, 1]
         axs[i].legend(title=f'Correlation: {correlation:.2f}')
     else:
         axs[i].legend()
@@ -235,10 +365,19 @@ plt.gcf().autofmt_xdate()  # Rotate and align the tick labels
 
 latitude = truncated_ds.latitude_anchor_survey if hasattr(truncated_ds, 'latitude_anchor_survey') else 0
 longitude = truncated_ds.longitude_anchor_survey if hasattr(truncated_ds, 'longitude_anchor_survey') else 0
-formatted_latitude = f"{abs(latitude):.2f}"
-formatted_longitude = f"{abs(longitude):.2f}"
+# For latitude (negative = South, positive = North)
+if float(latitude) < 0:
+    formatted_latitude = f"{abs(float(latitude))} °S"
+else:
+    formatted_latitude = f"{latitude} °N"
 
-fig.suptitle(f'Comparison within {case_name} Data\nAnchor location: ({formatted_latitude}°S, {formatted_longitude}°W)', 
+# For longitude (negative = West, positive = East)
+if float(longitude) < 0:
+    formatted_longitude = f"{abs(float(longitude))} °W"
+else:
+    formatted_longitude = f"{longitude} °E"
+
+fig.suptitle(f'Comparison within {case_name} Data\nAnchor location: ({formatted_latitude}, {formatted_longitude})', 
             fontsize=16)
 plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 

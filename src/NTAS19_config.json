@@ -1,0 +1,39 @@
+{
+  "case_name": "NTAS19",
+  "instruments": [
+    {
+      "serial_number": "12246",
+      "mat_file": "/Users/Shared/ORS/NTAS/NTAS19/data/sbe37/NTAS19_sbe37_12246.mat",
+      "height_above_bottom": 39
+    },
+    {
+      "serial_number": "12247",
+      "mat_file": "/Users/Shared/ORS/NTAS/NTAS19/data/sbe37/NTAS19_sbe37_12247.mat",
+      "height_above_bottom": 39
+    }
+  ],
+  "water_depth": {
+    "from_ship_uncorrected": null,
+    "from_ship_corrected": 4985,
+    "from_mooring_diagram": 5000
+  },
+  "deployment_spike_times": {
+    "start": "2020-10-18 18:15:00",
+    "end": "2020-10-18 19:00:00"
+  },
+  "recovery_spike_times": {
+    "start": "2020-01-18 18:32:00",
+    "end": "2020-01-18 18:53:00"
+  },
+
+  "processing_params": {
+    "truncation_hours_after_deployment": 4,
+    "use_release_time_for_truncation": true,
+    "default_fill_value": -99999.0
+  },
+  "time_attribute_keys": {
+    "anchor_over_time": "platform_anchor_over_time",
+    "release_fired_time": "platform_anchor_release_time",
+    "data_start_time":  "platform_data_start_time"
+  }
+}

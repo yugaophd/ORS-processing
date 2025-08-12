@@ -8,15 +8,15 @@ import xarray as xr
 import glob
 from qc_function import remove_spikes, compute_diff_stats
 
-case_name = 'stratus16'
+case_name = 'stratus17'
 project_name = 'stratus'
-project_number = "16"
-
+project_number = "17"
+version = 'v1'
 print(f'{project_name}{project_number}')
 
 # %%
 # Load the dataset
-data_path = f'/Users/yugao/UOP/ORS-processing/data/processed/{project_name}{project_number}'
+data_path = f'/Users/yugao/UOP/ORS-processing/data/processed/{project_name}{project_number}/{version}/'
 
 # Construct the file pattern to search for
 file_pattern = os.path.join(data_path, f'{project_name}{project_number}_*truncated.nc')
@@ -36,7 +36,12 @@ ds1 = xr.open_dataset(files[1])
 # %%
 # Apply spike removal to each variable
 
-variables = ['temp', 'cond', 'sal', 'abssal', 'press']
+from qc_function import remove_spikes
+variables = ['sea_water_temperature', 
+            'sea_water_practical_salinity', 
+            'sea_water_absolute_salinity', 
+            'sea_water_electrical_conductivity', 
+            'sea_water_pressure']
 
 # Apply spike removal to each variable
 cleaned_variables = {}
@@ -61,7 +66,6 @@ import numpy as np
 instrument_SN = ds0.attrs.get('instrument_SN', 'unknown')  # Default to 'unknown' if not present
 instrument_SN2 = ds1.attrs.get('instrument_SN', 'unknown')  # Default to 'unknown' if not present
 
-variables = ['temp', 'sal', 'abssal', 'cond', 'press']
 labels = ['Temperature (°C)', 'Salinity', 'Absolute Salinity', 'Conductivity (S/m)', 'Pressure']
 panel_titles = ['Temperature Profile', 'Salinity Measurements', 'Absolute Salinity', 'Conductivity Levels', 'Pressure Profile']
 
@@ -95,10 +99,20 @@ axs[-1].set_xlabel('Time')
 
 latitude = ds0.latitude_anchor_survey if hasattr(ds0, 'latitude_anchor_survey') else 0
 longitude = ds0.longitude_anchor_survey if hasattr(ds0, 'longitude_anchor_survey') else 0
-formatted_latitude = f"{-1 * latitude:.2f}"
-formatted_longitude = f"{-1 * longitude:.2f}"
+# For latitude (negative = South, positive = North)
+if float(latitude) < 0:
+    formatted_latitude = f"{abs(float(latitude))} °S"
+else:
+    formatted_latitude = f"{latitude} °N"
 
-fig.suptitle(f'Comparison within {project_name}{project_number} Data\nAnchor location: ({formatted_latitude}$^\circ$S, {formatted_longitude}$^\circ$W)', fontsize=16)
+# For longitude (negative = West, positive = East)
+if float(longitude) < 0:
+    formatted_longitude = f"{abs(float(longitude))} °W"
+else:
+    formatted_longitude = f"{longitude} °E"
+
+fig.suptitle(f'Comparison within {project_name}{project_number} Data\n \
+            Anchor location: ({formatted_latitude}$, {formatted_longitude}$)', fontsize=16)
 
 plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 
@@ -111,7 +125,8 @@ plt.savefig(plot_filename)
 print(f'Plot saved as {plot_filename}')
 
 
-# %% save the cleaned data
+
+# # %% save the cleaned data
 
 # ds0.to_netcdf(f'{data_path}/{project_name}{project_number}_{instrument_SN}_cleaned.nc')
 # ds1.to_netcdf(f'{data_path}/{project_name}{project_number}_{instrument_SN2}_cleaned.nc')
@@ -126,9 +141,8 @@ ds1_original = xr.open_dataset(files[1])
 # Create HITL catalog for the two datasets
 from qc_function import create_hitl_catalog
 
-create_hitl_catalog(ds0_original, ds0, "stratus16", instrument_SN)
-create_hitl_catalog(ds1_original, ds1, "stratus16", instrument_SN2)
-
+create_hitl_catalog(ds0_original, ds0, case_name, instrument_SN)
+create_hitl_catalog(ds1_original, ds1, case_name, instrument_SN2)
 
 # %%
 # Compute the difference statistics
@@ -136,10 +150,6 @@ create_hitl_catalog(ds1_original, ds1, "stratus16", instrument_SN2)
 from qc_function import export_diff_stats, compute_diff_stats
 
 # Compute the mean and standard deviation of the difference between the two datasets
-
-
-# Example dataset setup (assuming ds0 and ds1 are your xarray datasets)
-variables = ['temp', 'cond', 'sal', 'abssal', 'press']
 
 # Initialize dictionaries to store sensor data for each dataset
 sensor1_data = {'mean': {}, 'std': {}}
@@ -161,33 +171,21 @@ for var in variables:
 instrument_number1 = ds0.attrs.get('instrument_SN', 'unknown')  # Use the same for ds1 if it's the same instrument
 instrument_number2 = ds1.attrs.get('instrument_SN', 'unknown')
 
+# Add sensor stats to variables
+from qc_function import add_sensor_stats_to_variables
+import pandas as pd
 
-# Store mean and std separately as attributes without JSON
-for var, value in sensor1_data["mean"].items():
-    ds0.attrs[f"sensor_mean_{var}"] = value
-for var, value in sensor1_data["std"].items():
-    ds0.attrs[f"sensor_std_{var}"] = value
+df1 = pd.DataFrame(sensor1_data)
+df2 = pd.DataFrame(sensor2_data)
 
-for var, value in sensor2_data["mean"].items():
-    ds1.attrs[f"sensor_mean_{var}"] = value
-for var, value in sensor2_data["std"].items():
-    ds1.attrs[f"sensor_std_{var}"] = value
-
-# Store metadata
-ds0.attrs.update({
-    "instrument_SN": instrument_number1,
-    "error_characterization_info": "Mean and standard deviation stored as separate attributes."
-})
-
-ds1.attrs.update({
-    "instrument_SN": instrument_number2,
-    "error_characterization_info": "Mean and standard deviation stored as separate attributes."
-})
+# Add sensor stats to variables
+ds0, ds1 = add_sensor_stats_to_variables(ds0, ds1, variables)
 
 # %% save the cleaned data
 
 ds0.to_netcdf(f'{data_path}/{project_name}{project_number}_{instrument_SN}_cleaned.nc')
 ds1.to_netcdf(f'{data_path}/{project_name}{project_number}_{instrument_SN2}_cleaned.nc')
+
 
 # Specify output directory, which can depend on your project structure
 output_dir = f'../doc/{project_name}/{project_number}'

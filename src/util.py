@@ -220,52 +220,69 @@ def flatten_dict(d, parent_key='', sep='_'):
 def process_attributes_direct(mat_data):
     """
     Process the attributes from the MATLAB data and return a dictionary.
+    Handles both legacy nested structure (NTAS 11) and flat structure (NTAS 12+).
     """
-    # Investigate the contents of the 'meta' field to see what additional metadata it contains
-    meta_data = mat_data['meta']
+    # Check if 'info' exists in mat_data, otherwise use 'meta' 
+    if 'info' in mat_data:
+        meta_data = mat_data['info']
+    elif 'meta' in mat_data:
+        meta_data = mat_data['meta']
+    else:
+        print("Warning: Neither 'info' nor 'meta' found in mat_data")
+        return {}
 
     # Initialize an empty dictionary to store the extracted useful information
     useful_info = {}
 
-    # Iterate over the fields of the MATLAB structure object
-    for field_name in meta_data._fieldnames:
-        # Skip the 'data' field
-        if field_name == 'data':
-            continue
-        # Extract the value of the current field
-        field_value = getattr(meta_data, field_name)
-        # If the field value is another mat_struct, extract useful information recursively
-        if isinstance(field_value, mat_struct):
-            nested_info = {}
-            # Iterate over the fields of the nested mat_struct
-            for nested_field_name in field_value._fieldnames:
-                nested_field_value = getattr(field_value, nested_field_name)
-                nested_info[nested_field_name] = nested_field_value
-            useful_info[field_name] = nested_info
-        # If the field value is not a mat_struct, simply store it in the dictionary
-        else:
-            useful_info[field_name] = field_value
+    # Handle different input types
+    if isinstance(meta_data, dict):
+        # Direct dictionary access (newer format)
+        useful_info = meta_data.copy()
+    elif hasattr(meta_data, '_fieldnames'):
+        # MATLAB struct format (legacy format like NTAS 11)
+        for field_name in meta_data._fieldnames:
+            # Skip the 'data' field
+            if field_name == 'data':
+                continue
+            # Extract the value of the current field
+            field_value = getattr(meta_data, field_name)
+            # If the field value is another mat_struct, extract useful information recursively
+            if isinstance(field_value, mat_struct):
+                nested_info = {}
+                # Iterate over the fields of the nested mat_struct
+                for nested_field_name in field_value._fieldnames:
+                    nested_field_value = getattr(field_value, nested_field_name)
+                    nested_info[nested_field_name] = nested_field_value
+                useful_info[field_name] = nested_info
+            # If the field value is not a mat_struct, simply store it in the dictionary
+            else:
+                useful_info[field_name] = field_value
+    else:
+        print(f"Warning: Unrecognized meta_data type: {type(meta_data)}")
+        return {}
 
-    # Flatten the useful_info dictionary further
+    # Flatten the useful_info dictionary
     flattened_info = flatten_dict(useful_info)
 
-    # Flatten the 'global' dictionary further
-    flattened_global = flatten_dict(useful_info['global'], parent_key='global')
+    # Check if we have nested structure (legacy NTAS 11 format)
+    if 'global' in useful_info and isinstance(useful_info['global'], dict):
+        # Legacy nested structure - flatten additional dictionaries
+        flattened_global = flatten_dict(useful_info['global'], parent_key='global')
+        flattened_info.update(flattened_global)
+    
+    if 'instrument' in useful_info and isinstance(useful_info['instrument'], dict):
+        flattened_instrument = flatten_dict(useful_info['instrument'], parent_key='instrument')
+        flattened_info.update(flattened_instrument)
+        
+    if 'history' in useful_info and isinstance(useful_info['history'], dict):
+        # Flatten the 'history' dictionary further, excluding 'history_decode'
+        flattened_history = flatten_dict(
+            {k: v for k, v in useful_info['history'].items() if k != 'decode'}, 
+            parent_key='history'
+        )
+        flattened_info.update(flattened_history)
 
-    # Flatten the 'instrument' dictionary further
-    flattened_instrument = flatten_dict(useful_info['instrument'], parent_key='instrument')
-
-    # Flatten the 'history' dictionary further, excluding 'history_decode'
-    flattened_history = flatten_dict({k: v for k, v in useful_info['history'].items() if k != 'decode'}, parent_key='history')
-
-    # Update the attributes with the flattened dictionaries
-    processed_attributes = {}
-    processed_attributes.update(flattened_info)
-    processed_attributes.update(flattened_global)
-    processed_attributes.update(flattened_instrument)
-    processed_attributes.update(flattened_history)
-
-    return processed_attributes
+    return flattened_info
 
 
 import xarray as xr

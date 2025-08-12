@@ -1,25 +1,25 @@
 {
-  "case_name": "STRATUS12",
+  "case_name": "NTAS12",
   "instruments": [
     {
-      "serial_number": "1876",
-      "mat_file": "/Users/Shared/ORS/Stratus/stratus12/data/sbe16/stratus12_sbe16_1876.mat",
+      "serial_number": "1877",
+      "mat_file": "/Users/Shared/ORS/NTAS/NTAS12/data/sbe16/ntas12_sbe16_1877.mat",
       "height_above_bottom": 39
     },
     {
-      "serial_number": "1879",
-      "mat_file": "/Users/Shared/ORS/Stratus/stratus12/data/sbe16/stratus12_sbe16_1879.mat",
+      "serial_number": "1878",
+      "mat_file": "/Users/Shared/ORS/NTAS/NTAS12/data/sbe16/ntas12_sbe16_1878.mat",
       "height_above_bottom": 39
     }
   ],
   "water_depth": {
-    "from_ship_uncorrected": 4562,
-    "from_ship_corrected": 4539,
-    "from_mooring_diagram": 4450
+    "from_ship_uncorrected": null,
+    "from_ship_corrected": 5035,
+    "from_mooring_diagram": 5035
   },
   "deployment_spike_times": {
-    "start": "2012-05-17 15:48:00", 
-    "end": "2012-05-17 17:42:00"
+    "start": "2012-11-30 14:55:00",
+    "end": "2012-11-30 16:34:57"
   },
   "recovery_spike_times": {
     "start": "2013-10-25 12:52:00",
@@ -32,7 +32,7 @@
   },
   "time_attribute_keys": {
     "anchor_over_time": "platform_anchor_over_time",
-    "release_fired_time": "platform_buoy_recovery_time",
+    "release_fired_time": "platform_anchor_release_time",
     "data_start_time": "platform_data_start_time"
   }
 }

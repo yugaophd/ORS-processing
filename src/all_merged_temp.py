@@ -1,3 +1,4 @@
+# %%
 # Script to create a CF-compliant NetCDF file from the merged Stratus dataset
 # Adds longitude, latitude, depth as coordinates for all variables
 import os
@@ -10,8 +11,8 @@ import matplotlib.pyplot as plt
 # Define input and output paths
 input_file = '/Users/yugao/UOP/ORS-processing/data/processed/merged_stratus/merged_stratus12_to_stratus22.nc'
 output_dir = '/Users/yugao/UOP/ORS-processing/data/processed/merged_stratus'
-output_file = os.path.join(output_dir, 'stratus_temperature_2012_2023.nc')
-
+output_file = os.path.join(output_dir, 'stratus_2012_to_2023.nc')
+temp_file = os.path.join(output_dir, 'stratus_temperature_2012_to_2023_v1.nc')
 # Ensure output directory exists
 os.makedirs(output_dir, exist_ok=True)
 
@@ -198,7 +199,7 @@ try:
         
     # Add global attributes for CF compliance
     cf_ds.attrs['Conventions'] = 'CF-1.8'
-    cf_ds.attrs['featureType'] = 'timeSeries'
+    # cf_ds.attrs['featureType'] = 'timeSeries'
     cf_ds.attrs['processing_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     cf_ds.attrs['processing_description'] = 'CF-compliant dataset with explicit coordinates'
     
@@ -228,9 +229,9 @@ try:
     # Special encoding for coordinates
     encoding.update({
         'time': {
-            'units': f'seconds since {reference_date} UTC',  # Explicit UTC
+            'units': f'seconds since {reference_date}',  # Explicit UTC
             'calendar': 'gregorian',
-            'dtype': 'int32',  # Use int32 for time to save space
+            'dtype': 'double',  # Use double instead of int32 for better compatibility
             'zlib': True, 
             'complevel': 4
         },
@@ -269,10 +270,30 @@ try:
                 cf_ds.attrs[attr] = cf_ds.attrs[attr].replace('Z', '')
     
     # Add standardized access information
+    cf_ds.attrs['site_code'] = 'STRATUS'
+    cf_ds.attrs['platform_code'] = 'STRATUS'
     cf_ds.attrs['license'] = 'These data may be redistributed and used without restriction.'
-    cf_ds.attrs['acknowledgement'] = 'Please acknowledge the use of these data with: "Data provided by the Upper Ocean Processes Group at Woods Hole Oceanographic Institution"'
-    cf_ds.attrs['project'] = 'Stratus Ocean Reference Station'
-    cf_ds.attrs['references'] = 'https://uop.whoi.edu/projects/stratus/'
+    # cf_ds.attrs['acknowledgement'] = 'Please acknowledge the use of these data with: "Data provided by the Upper Ocean Processes Group at Woods Hole Oceanographic Institution"'
+    # cf_ds.attrs['project'] = 'Stratus Ocean Reference Station'
+    # cf_ds.attrs['references'] = 'https://uop.whoi.edu/projects/stratus/'
+    # Add funding acknowledgment
+    cf_ds.attrs['acknowledgement'] = 'The Stratus project is supported by the National Oceanic and Atmospheric Administration (NOAA) Global Ocean Monitoring and Observing (GOMO) Program through the Cooperative Institute for the North Atlantic Region (CINAR) under Cooperative Agreement NA14OAR4320158. NOAA CPO FundRef number (100007298).'
+
+    # Fix CF compliance issues found by CF-checker
+
+    # 2. Fix time monotonicity issues
+    time_diffs = np.diff(cf_ds.time.values)
+    if np.any(time_diffs <= np.timedelta64(0)):
+        print("WARNING: Time values are not monotonic. Sorting and removing duplicates...")
+        
+        # Sort by time
+        cf_ds = cf_ds.sortby('time')
+        
+        # Remove duplicate times if any
+        _, index = np.unique(cf_ds.time.values, return_index=True)
+        if len(index) < len(cf_ds.time):
+            cf_ds = cf_ds.isel(time=index)
+            print(f"Removed {len(cf_ds.time) - len(index)} duplicate time points")
     
     print(f"Saving CF-compliant dataset to: {output_file}")
     cf_ds.to_netcdf(output_file, encoding=encoding, format='NETCDF4')
@@ -292,3 +313,52 @@ except Exception as e:
     print(f"Error creating CF-compliant dataset: {e}")
     import traceback
     traceback.print_exc()
+
+# %%
+# CF checker
+from cfchecker.cfchecks import CFChecker
+checker = CFChecker()
+checker.checker('/Users/yugao/UOP/ORS-processing/data/processed/merged_stratus/stratus_temperature_2012_2023.nc')
+
+# %%
+# Create temperature-only version
+temp_only_ds = cf_ds.copy()
+
+# Drop unwanted variables
+del temp_only_ds['sea_water_practical_salinity']
+del temp_only_ds['sea_water_absolute_salinity']
+del temp_only_ds['sea_water_electrical_conductivity']
+del temp_only_ds['sea_water_pressure']
+
+# Update the dataset description
+temp_only_ds.attrs['title'] = 'Stratus Ocean Reference Station - Temperature Only'
+temp_only_ds.attrs['summary'] = 'Sea water temperature measurements from Stratus moorings 12-22 (2012-2023)'
+temp_only_ds.attrs['processing_description'] = 'Temperature-only CF-compliant dataset with explicit coordinates'
+
+# Create encoding for temperature-only dataset
+temp_encoding = {
+    'time': {
+        'units': f'seconds since {reference_date}',
+        'calendar': 'gregorian',
+        'dtype': 'double',  # Force double precision
+        'zlib': True, 
+        'complevel': 4
+    },
+    'latitude': {'zlib': True, 'complevel': 4, '_FillValue': np.nan},
+    'longitude': {'zlib': True, 'complevel': 4, '_FillValue': np.nan},
+    'depth': {'zlib': True, 'complevel': 4, '_FillValue': np.nan},
+    'sea_water_temperature': {'zlib': True, 'complevel': 4}
+}
+
+# Save the temperature-only dataset with proper encoding
+temp_output_file = os.path.join(output_dir, 'stratus_temperature_2012_2023.nc')
+
+print(f"Saving temperature-only dataset to: {temp_output_file}")
+temp_only_ds.to_netcdf(temp_output_file, encoding=temp_encoding, format='NETCDF4')
+
+print(f"Temperature-only dataset successfully saved with shape: {temp_only_ds.sea_water_temperature.shape}")
+# %%
+# check the saved temperature-only dataset with CF checker
+checker.checker(temp_output_file)
+
+# %%

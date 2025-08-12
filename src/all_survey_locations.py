@@ -1,3 +1,4 @@
+# plot distance from STRATUS 12 and distance from previous site
 import xarray as xr
 import matplotlib.pyplot as plt
 import numpy as np
@@ -39,8 +40,8 @@ def format_coordinate(value, is_lat=True):
 
 def plot_deployment_locations():
     """
-    Create cumulative plots of Stratus mooring deployment locations.
-    Each figure shows locations from Stratus 12 up to the specified deployment.
+    Create cumulative plots of STRATUS mooring deployment locations.
+    Each figure shows locations from STRATUS 12 up to the specified deployment.
     Also calculates distance between consecutive deployments.
     """
     # Load the merged dataset
@@ -69,17 +70,38 @@ def plot_deployment_locations():
     for i in range(2, len(deployments) + 1):  # Start with at least 2 deployments
         fig, ax = plt.subplots(figsize=(12, 10))  # Increased figure size
         
-        # Plot each deployment marker
+        # Plot each deployment marker with high contrast colors
+        # Create a list of high-contrast colors instead of using viridis
+        high_contrast_colors = [
+            '#1f77b4',  # Blue
+            '#ff7f0e',  # Orange
+            '#d62728',  # Red
+            '#2ca02c',  # Green
+            '#9467bd',  # Purple
+            '#8c564b',  # Brown
+            '#e377c2',  # Pink
+            '#17becf',  # Cyan
+            '#bcbd22',  # Olive
+            '#ff9896',  # Light red
+            '#aec7e8',  # Light blue
+            '#ffbb78',  # Light orange
+            '#98df8a',  # Light green
+            '#c5b0d5',  # Light purple
+            '#7f7f7f',  # Gray
+        ]
+
         for j in range(i):
             deployment_num = deployments[j].strip()
+            color_idx = j % len(high_contrast_colors)  # Cycle through colors
             scatter = ax.scatter(longitudes[j], latitudes[j], 
-                     s=150, marker='o',  # Slightly larger markers
-                     c=[plt.cm.viridis(j/(max(1, i-1)))],  
-                     edgecolor='black', linewidth=1.5,
-                     label=f'Stratus {deployment_num}',
+                     s=180,  # Keep the increased marker size
+                     marker='o',
+                     c=high_contrast_colors[color_idx],  # Use high contrast color
+                     edgecolor='black', 
+                     linewidth=1.5,
+                     alpha=0.85,  # Slightly increased opacity for better contrast
+                     label=f'STRATUS {deployment_num}',
                      zorder=2)
-            
-            # No text annotations - as requested
         
         # Adjust plot limits with padding
         padding = 0.05  # degrees
@@ -98,14 +120,19 @@ def plot_deployment_locations():
         ax.xaxis.set_major_formatter(FuncFormatter(format_lon_ticks))
         ax.yaxis.set_major_formatter(FuncFormatter(format_lat_ticks))
         
-        # Add title
+        # Add title with larger font
         start_deployment = deployments[0].strip()
         end_deployment = deployments[i-1].strip()
-        ax.set_title(f'Stratus Deployment Locations (Stratus {start_deployment} to {end_deployment})', fontsize=14)
+        ax.set_title(f'STRATUS Deployment Locations (STRATUS {start_deployment} to {end_deployment})', 
+                    fontsize=18)  # Increased font size
         
-        # Add labels
-        ax.set_xlabel('Longitude', fontsize=12)
-        ax.set_ylabel('Latitude', fontsize=12)
+        # Add labels with larger font
+        ax.set_xlabel('Longitude', fontsize=16)  # Increased font size
+        ax.set_ylabel('Latitude', fontsize=16)  # Increased font size
+        
+        # Increase tick label sizes
+        ax.tick_params(axis='both', which='major', labelsize=14)  # Larger tick labels
+        ax.tick_params(axis='both', which='minor', labelsize=12)  # Larger minor tick labels
         
         # Add finer grid with both major and minor gridlines
         ax.grid(True, which='major', linestyle='-', alpha=0.6)
@@ -117,9 +144,10 @@ def plot_deployment_locations():
         ax.xaxis.set_minor_locator(AutoMinorLocator(5))  # 5 minor ticks between major ticks
         ax.yaxis.set_minor_locator(AutoMinorLocator(5))
         
-        # Add legend with deployments in chronological order
+        # Add legend with deployments in chronological order and larger font
         handles, labels = ax.get_legend_handles_labels()
-        ax.legend(handles, labels, loc='lower right', title='Deployments', ncol=2)
+        ax.legend(handles, labels, loc='lower right', title='Deployments', 
+                ncol=2, fontsize=14, title_fontsize=16)  # Increased font sizes
         
         # Save figure
         plt.tight_layout()
@@ -155,10 +183,10 @@ def plot_deployment_locations():
             
             # Create LaTeX file
             with open(f'{doc_dir}/deployment_distance.tex', 'w') as f:
-                f.write("% Stratus mooring deployment distance information\n\n")
+                f.write("% STRATUS mooring deployment distance information\n\n")
                 
                 # Simple sentence about the distance
-                f.write(f"The distance between Stratus {second_last_deployment} and Stratus {last_deployment} ")
+                f.write(f"The distance between STRATUS {second_last_deployment} and STRATUS {last_deployment} ")
                 f.write(f"deployments is {dist_km:.2f} kilometers ({dist_nm:.2f} nautical miles).\n\n")
                 
                 # Keep the coordinates table
@@ -169,8 +197,8 @@ def plot_deployment_locations():
                 f.write("\\hline\n")
                 f.write("\\textbf{Deployment} & \\textbf{Latitude} & \\textbf{Longitude} \\\\\n")
                 f.write("\\hline\n")
-                f.write(f"Stratus {second_last_deployment} & {lat1_str} & {lon1_str} \\\\\n")
-                f.write(f"Stratus {last_deployment} & {lat2_str} & {lon2_str} \\\\\n")
+                f.write(f"STRATUS {second_last_deployment} & {lat1_str} & {lon1_str} \\\\\n")
+                f.write(f"STRATUS {last_deployment} & {lat2_str} & {lon2_str} \\\\\n")
                 f.write("\\hline\n")
                 f.write("\\end{tabular}\n")
                 f.write("\\end{table}\n")
