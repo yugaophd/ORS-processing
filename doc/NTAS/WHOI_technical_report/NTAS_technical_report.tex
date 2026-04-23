@@ -1,0 +1,168 @@
+% WHOI Technical Report for NTAS Deep-Ocean Temperature and Salinity Data
+% Deployments 11-20 (2011-2022)
+% Compile with: pdflatex NTAS_technical_report.tex
+
+\documentclass[12pt]{report}
+
+% Package imports
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage[hypertexnames=false]{hyperref}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{ifthen}
+\usepackage{times}  % Times font for WHOI standard
+\usepackage{setspace}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{indentfirst}
+
+% Page layout - WHOI standard
+\geometry{
+    letterpaper,
+    top=1in,
+    bottom=1in,
+    left=1in,
+    right=1in
+}
+
+% Line spacing
+\onehalfspacing
+
+% Hyperref setup
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    citecolor=blue,
+    pdftitle={NTAS Ocean Reference Station: Deep-Ocean Temperature and Salinity Data Report},
+    pdfauthor={Yu Gao, Woods Hole Oceanographic Institution},
+}
+
+% Global image path - needed for the individual reports
+\newcommand{\imagepath}{/Users/yugao/UOP/ORS-processing/img}
+\graphicspath{{/Users/yugao/UOP/ORS-processing/img/}}
+
+% Title page information
+\title{
+    \textbf{Northwest Tropical Atlantic Station (NTAS):\\
+    Deep-Ocean Temperature and Salinity Data\\
+    Deployments 11-20 (2011-2022)}\\
+    \vspace{1cm}
+    \large Woods Hole Oceanographic Institution\\
+    Technical Report
+}
+
+\author{
+    Yu Gao\\
+    Upper Ocean Processes Group\\
+    Woods Hole Oceanographic Institution\\
+    Woods Hole, MA 02543\\
+    \texttt{yugao@whoi.edu}
+}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This technical report documents deep-ocean temperature and salinity records from the Northwest Tropical Atlantic Station (NTAS) for ten consecutive deployments (NTAS 11 through NTAS 20, 2011 to 2022). During each deployment, paired Sea-Bird Scientific recorders (SBE16 or SBE37) were mounted near the seafloor to support sustained deep-ocean observations.
+
+The report focuses on methods and product quality: time-base verification, deployment/recovery trimming, spike detection, paired-sensor consistency checks, and metadata standardization to OceanSITES and CF conventions. Temperature is the primary mature product in this release, with deployment-by-deployment error statistics from paired instruments. Salinity variables are provided as processed products derived with TEOS-10 from conductivity, temperature, and depth-based pressure, and should be interpreted with deployment-specific caution where conductivity behavior is less stable.
+
+This volume serves as a reproducible processing record and deployment catalog for users who need traceable quality-control decisions, consistent file structure, and uncertainty context for deep-ocean climate analyses.
+\end{abstract}
+
+\setcounter{tocdepth}{1}
+
+\tableofcontents
+
+% Include introductory chapter
+\chapter{Introduction}
+\input{00/introduction_chapter}
+
+% Include each deployment report as a chapter
+\chapter{NTAS 11 (2011-2012)}
+\input{11/ntas11_chapter}
+
+% Fallback macro definitions used by chapters 12-20.
+\providecommand{\projectname}{}
+\providecommand{\displayprojectname}{}
+\providecommand{\caseyear}{}
+\providecommand{\casenumber}{}
+\providecommand{\previouscasenumber}{}
+\providecommand{\imagepath}{}
+\providecommand{\HasNextDeploymentOverlap}{}
+\providecommand{\FirstInstrumentType}{}
+\providecommand{\SecondInstrumentType}{}
+\providecommand{\DeploymentSpike}{}
+\providecommand{\DeploymentRecordedSpike}{}
+\providecommand{\DeploymentStart}{}
+\providecommand{\RecoverySpike}{}
+\providecommand{\RecoveryRecordedSpike}{}
+\providecommand{\DeploymentEnd}{}
+\providecommand{\FirstInstrument}{}
+\providecommand{\SecondInstrument}{}
+\providecommand{\PreviousDeploymentInstrument}{}
+\providecommand{\CurrentDeploymentInstrument}{}
+\providecommand{\pressureavailable}{}
+\providecommand{\pressurenote}{}
+\providecommand{\MeanDiffTemp}{}
+\providecommand{\StdDiffTemp}{}
+\providecommand{\StdSingleTemp}{}
+\providecommand{\MeanDiffCond}{}
+\providecommand{\StdDiffCond}{}
+\providecommand{\StdSingleCond}{}
+\providecommand{\MeanDiffPSal}{}
+\providecommand{\StdDiffPSal}{}
+\providecommand{\StdSinglePSal}{}
+\providecommand{\MeanDiffASal}{}
+\providecommand{\StdDiffASal}{}
+\providecommand{\StdSingleASal}{}
+\providecommand{\MeanDiffPres}{}
+\providecommand{\StdDiffPres}{}
+\providecommand{\StdSinglePres}{}
+\providecommand{\WindowSize}{}
+\providecommand{\ThresholdValue}{}
+
+\chapter{NTAS 12 (2012-2013)}
+\input{12/macros}
+\input{12/ntas12_chapter}
+
+\chapter{NTAS 13 (2013-2014)}
+\input{13/macros}
+\input{13/ntas13_chapter}
+
+\chapter{NTAS 14 (2014-2016)}
+\input{14/macros}
+\input{14/ntas14_chapter}
+
+\chapter{NTAS 15 (2016, Missing Data)}
+\input{15/macros}
+\input{15/ntas15_chapter}
+
+\chapter{NTAS 16 (2017-2018)}
+\input{16/macros}
+\input{16/ntas16_chapter}
+
+\chapter{NTAS 17 (2018-2020)}
+\input{17/macros}
+\input{17/ntas17_chapter}
+
+\chapter{NTAS 18 (2020)}
+\input{18/macros}
+\input{18/ntas18_chapter}
+
+\chapter{NTAS 19 (2020-2021)}
+\input{19/macros}
+\input{19/ntas19_chapter}
+
+\chapter{NTAS 20 (2021-2022)}
+\input{20/macros}
+\input{20/ntas20_chapter}
+
+\end{document}

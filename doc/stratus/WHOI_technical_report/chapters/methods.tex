@@ -1,0 +1,289 @@
+\section{Instrumentation}
+
+\subsection{Sea-Bird Temperature and Conductivity Recorders}
+
+The deep ocean measurements presented in this report were collected using Sea-Bird Scientific (formerly Sea-Bird Electronics) temperature and conductivity recorders. Two instrument types were deployed across the Stratus 12-22 time series:
+
+\begin{itemize}
+    \item \textbf{SBE37-SM MicroCAT:} A high-accuracy conductivity and temperature recorder with optional pressure sensor. The SBE37 uses a glass-coated thermistor for temperature measurements and a conductivity cell with platinized electrodes. Temperature accuracy is typically ±0.002°C, conductivity accuracy is ±0.0003 S/m, and pressure accuracy (when equipped) is 0.1\% of full scale range.
+    
+    \item \textbf{SBE16plus SeaCAT:} A conductivity and temperature recorder similar in design to the SBE37 but in a different form factor. The SBE16plus offers comparable accuracy specifications: ±0.005°C for temperature and ±0.0005 S/m for conductivity.
+\end{itemize}
+
+All instruments were factory-calibrated before deployment and, when recovered, were returned to Sea-Bird Scientific for post-deployment calibration. The calibration coefficients provided by the manufacturer were applied during the initial data processing performed in MATLAB before conversion to the datasets processed in this report.
+
+\subsection{Deployment Configuration}
+
+For each Stratus deployment, two temperature and conductivity recorders were deployed at the same nominal depth, approximately 39 meters above the seafloor. The instruments were attached to the mooring line with vertical separation of approximately 2-3 meters to avoid wake interference while remaining close enough to sample the same water mass. This configuration provides redundancy and enables assessment of measurement precision through direct sensor comparisons.
+
+The instruments were configured to sample at 5-minute intervals, providing high temporal resolution while balancing data storage capacity and battery life for deployments lasting 12-24 months. Sampling was synchronized to start at the same time for both instruments to facilitate direct comparison.
+
+\subsection{Instrument Depth and Pressure Considerations}
+
+The nominal instrument depth is approximately 4411 meters (39 meters above the 4450-meter seafloor). However, actual instrument depth varies slightly between deployments due to:
+\begin{itemize}
+    \item Variations in mooring line stretch under different current conditions
+    \item Small differences in mooring design between deployments
+    \item Tilt of the mooring line in strong currents
+\end{itemize}
+
+Many of the SBE16plus instruments deployed in this program were not equipped with pressure sensors, as the primary focus was on temperature measurements. Where pressure sensors were included, they were found to exhibit significant drift over the 12-24 month deployment periods, likely due to the extreme pressures at 4400+ meter depths.
+
+Given these challenges, salinity calculations in this report use a fixed pressure value calculated from the known instrument depth rather than the potentially drifting measured pressure. This approach is detailed in Section~\ref{sec:salinity_calc}.
+
+\section{Data Processing Pipeline}
+
+The data processing pipeline consists of several stages designed to produce quality-controlled datasets suitable for scientific analysis. Each stage is documented in detail in the individual deployment chapters, but the overall workflow is common to all deployments.
+
+\subsection{Stage 1: Pre-Processing}
+
+Pre-processing involves converting the manufacturer-formatted data files into a standardized format and applying necessary time corrections.
+
+\subsubsection{Data Loading}
+The instruments return data in MATLAB .mat file format after initial processing by Sea-Bird software (SBEDataProcessing). These files contain:
+\begin{itemize}
+    \item Time stamps (MATLAB datenum format)
+    \item Temperature (°C)
+    \item Conductivity (S/m)
+    \item Salinity (PSU, calculated by SBE software)
+    \item Pressure (dbar, if equipped)
+\end{itemize}
+
+The MATLAB files are read into Python using custom functions that convert the data into xarray datasets, a format that provides convenient labeled array operations and metadata management.
+
+\subsubsection{Time Correction}
+
+MATLAB's datenum format uses a different epoch than standard Unix time, requiring conversion. The conversion process involves:
+\begin{enumerate}
+    \item Converting MATLAB datenum (days since January 0, 0000) to Python datetime objects
+    \item Accounting for MATLAB's treatment of year 0000 as a leap year
+    \item Converting to NetCDF-standard time units (``days since 0001-01-01'')
+\end{enumerate}
+
+After conversion to a standard time base, the instrument clocks are evaluated for drift by comparing recorded deployment and recovery ``spike'' times (characteristic temperature changes during deployment and recovery operations) with the actual times recorded in the mooring logs. If the offset exceeds one sampling interval (5 minutes), the data are linearly interpolated to a corrected time base.
+
+The decision to apply time interpolation is made individually for each deployment based on visual inspection of the spike times. The rationale and outcome of this decision are documented in each deployment chapter.
+
+\subsubsection{Data Truncation}
+
+Data are truncated to include only the period when the instruments were at their deployed depth on the seafloor. The start time is defined as 4 hours after the anchor over time (when the anchor was dropped), allowing sufficient time for the mooring to settle to its final position. The end time is defined as the release fired time, when the acoustic release was triggered to begin mooring recovery.
+
+These times are recorded in the mooring logs and are included in the deployment metadata. Visual inspection of the temperature time series confirms that truncation successfully excludes data collected during transit through the water column.
+
+\subsection{Stage 2: Salinity Recalculation}
+\label{sec:salinity_calc}
+
+As noted in Section~2.1.3, pressure measurements from deep ocean deployments often exhibit significant drift. Additionally, some instruments were not equipped with pressure sensors. To ensure consistent salinity calculations across all deployments, we recalculate salinity using a fixed pressure value derived from the known instrument depth.
+
+\subsubsection{Pressure from Depth}
+
+The fixed pressure value is calculated using the TEOS-10 Gibbs SeaWater (GSW) Oceanographic Toolbox function \texttt{gsw.p\_from\_z}:
+
+\begin{equation}
+p = \text{gsw.p\_from\_z}(z, \text{lat})
+\end{equation}
+
+where $z = -\text{depth}$ (negative because depth is positive downward) and lat is the latitude from the anchor survey. For the Stratus deployments at approximately 20°S and 4411 m depth, this yields a pressure of approximately 4470 dbar.
+
+\subsubsection{Practical Salinity}
+
+Practical salinity is calculated from conductivity, temperature, and pressure using the TEOS-10 algorithm:
+
+\begin{equation}
+S_P = \text{gsw.SP\_from\_C}(C, T, p)
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $C$ is electrical conductivity (S/m, converted to mS/cm by multiplying by 10)
+    \item $T$ is in situ temperature (°C)
+    \item $p$ is pressure (dbar, calculated from depth as described above)
+\end{itemize}
+
+The output $S_P$ is practical salinity on the Practical Salinity Scale 1978 (unitless, but conventionally reported in PSU).
+
+\subsubsection{Absolute Salinity}
+
+Absolute salinity accounts for the spatial variation in seawater composition and is calculated using:
+
+\begin{equation}
+S_A = \text{gsw.SA\_from\_SP}(S_P, p, \text{lon}, \text{lat})
+\end{equation}
+
+where lon and lat are the longitude and latitude from the anchor survey. The output $S_A$ is absolute salinity in g/kg.
+
+This approach ensures consistent salinity calculations across all deployments and eliminates artifacts from pressure sensor drift.
+
+\subsection{Stage 3: Quality Control}
+
+Quality control procedures are applied to identify and remove bad data points while preserving real oceanographic variability.
+
+\subsubsection{Spike Detection and Removal}
+
+The primary quality control method is automated spike detection based on deviations from a local running mean. For each variable (temperature, conductivity, salinity), the algorithm:
+
+\begin{enumerate}
+    \item Calculates a rolling mean and standard deviation using a centered window (typical window size: 12 samples, representing 1 hour of data)
+    \item Identifies points that deviate from the rolling mean by more than a threshold number of standard deviations (typical threshold: 3$\sigma$)
+    \item Flags these points as spikes and replaces them with missing value indicators (-99999)
+\end{enumerate}
+
+The window size and threshold parameters are tunable and are documented for each deployment. These values were chosen to effectively remove instrument glitches and data dropouts while preserving real oceanographic variability, which occurs on timescales longer than the rolling window.
+
+\subsubsection{Visual Inspection (Human-in-the-Loop)}
+
+Automated spike detection is followed by visual inspection of the cleaned time series. For each deployment and each instrument, figures are generated showing:
+\begin{itemize}
+    \item Original (uncleaned) time series
+    \item Cleaned time series after spike removal
+    \item Difference between original and cleaned data (showing removed points)
+\end{itemize}
+
+These figures are reviewed to ensure that:
+\begin{itemize}
+    \item Obvious spikes have been removed
+    \item Real oceanographic variability has been preserved
+    \item No systematic biases have been introduced
+\end{itemize}
+
+If issues are identified during visual inspection, quality control parameters can be adjusted and the process repeated. This ``human-in-the-loop'' approach ensures that automated procedures do not inadvertently remove real data or fail to remove obvious bad points.
+
+\subsection{Stage 4: Statistical Analysis}
+
+When both instruments from a deployment are functional, statistical analysis of sensor differences provides quantitative measures of data quality.
+
+\subsubsection{Single-Sensor Statistics}
+
+For each sensor and variable, we calculate:
+\begin{itemize}
+    \item Mean: $\bar{x} = \frac{1}{N}\sum_{i=1}^{N} x_i$
+    \item Standard deviation: $\sigma_x = \sqrt{\frac{1}{N-1}\sum_{i=1}^{N} (x_i - \bar{x})^2}$
+    \item Minimum and maximum values
+\end{itemize}
+
+The standard deviation characterizes the temporal variability observed by each sensor over the deployment period.
+
+\subsubsection{Sensor Difference Statistics}
+
+For paired measurements from co-located sensors, we calculate the difference time series:
+\begin{equation}
+\Delta x_i = x_{1,i} - x_{2,i}
+\end{equation}
+
+Statistics of the difference include:
+\begin{itemize}
+    \item Mean difference: $\overline{\Delta x} = \frac{1}{N}\sum_{i=1}^{N} \Delta x_i$
+    \item Standard deviation of difference: $\sigma_{\Delta x} = \sqrt{\frac{1}{N-1}\sum_{i=1}^{N} (\Delta x_i - \overline{\Delta x})^2}$
+\end{itemize}
+
+The mean difference indicates any systematic bias between sensors (ideally close to zero), while the standard deviation of the difference provides a measure of random measurement error. For independent sensors with random errors $\sigma_1$ and $\sigma_2$:
+
+\begin{equation}
+\sigma_{\Delta x}^2 = \sigma_1^2 + \sigma_2^2
+\end{equation}
+
+If we assume the sensors have similar precision ($\sigma_1 \approx \sigma_2 \approx \sigma_s$), then:
+
+\begin{equation}
+\sigma_s \approx \frac{\sigma_{\Delta x}}{\sqrt{2}}
+\end{equation}
+
+This provides an estimate of single-sensor precision independent of temporal variability in the ocean.
+
+\subsubsection{Quality Benchmarks}
+
+Based on analysis of numerous deployments, we have established the following benchmarks for acceptable data quality:
+
+\begin{itemize}
+    \item \textbf{Temperature:}
+    \begin{itemize}
+        \item Mean difference: $|\overline{\Delta T}| < 0.005$°C
+        \item Standard deviation of difference: $\sigma_{\Delta T} < 0.005$°C
+        \item Implied single-sensor precision: $\sigma_T < 0.004$°C
+    \end{itemize}
+    
+    \item \textbf{Practical Salinity:}
+    \begin{itemize}
+        \item Mean difference: $|\overline{\Delta S_P}| < 0.02$ PSU
+        \item Standard deviation of difference: $\sigma_{\Delta S_P} < 0.01$ PSU
+        \item Implied single-sensor precision: $\sigma_{S_P} < 0.007$ PSU
+    \end{itemize}
+    
+    \item \textbf{Conductivity:}
+    \begin{itemize}
+        \item Mean difference: $|\overline{\Delta C}| < 0.001$ S/m
+        \item Standard deviation of difference: $\sigma_{\Delta C} < 0.001$ S/m
+        \item Implied single-sensor precision: $\sigma_C < 0.0007$ S/m
+    \end{itemize}
+\end{itemize}
+
+These benchmarks are based on manufacturer specifications and empirical analysis of the multi-deployment time series. Deployments meeting these criteria are considered to provide high-quality data suitable for climate research. Departures from these benchmarks are noted in the individual deployment chapters and may indicate sensor drift, biofouling, or other issues requiring additional scrutiny.
+
+\section{Data Products and File Formats}
+
+\subsection{NetCDF File Structure}
+
+All processed data are provided as NetCDF-4 files following CF-1.8 conventions and OceanSITES data standards. Each deployment produces the following data files:
+
+\begin{itemize}
+    \item \textbf{Truncated files:} Time-corrected data truncated to the deployment period but before quality control
+    \item \textbf{Cleaned files:} Quality-controlled data after spike removal
+    \item \textbf{Merged files:} Combined time series from both instruments (when available)
+\end{itemize}
+
+\subsection{Variables}
+
+Each NetCDF file contains the following variables:
+
+\begin{itemize}
+    \item \texttt{time}: Time coordinate (days since 0001-01-01 00:00:00)
+    \item \texttt{sea\_water\_temperature}: In situ temperature (°C)
+    \item \texttt{sea\_water\_electrical\_conductivity}: Electrical conductivity (S/m)
+    \item \texttt{sea\_water\_practical\_salinity}: Practical salinity (PSU)
+    \item \texttt{sea\_water\_absolute\_salinity}: Absolute salinity (g/kg)
+    \item \texttt{sea\_water\_pressure}: Pressure (dbar, if available; otherwise filled with -99999)
+\end{itemize}
+
+Missing data are indicated by the fill value -99999.
+
+\subsection{Metadata Attributes}
+
+Global attributes provide deployment-specific metadata including:
+\begin{itemize}
+    \item Deployment and recovery dates and times
+    \item Anchor position (latitude, longitude, water depth)
+    \item Instrument serial numbers and types
+    \item Calibration dates and coefficients
+    \item Processing history and software versions
+    \item Quality control parameters and statistics
+    \item Data contributor information
+\end{itemize}
+
+Variable attributes include standard names, units, valid ranges, and quality control flags following OceanSITES conventions.
+
+\section{Limitations and Caveats}
+
+\subsection{Salinity Data Quality}
+
+While temperature data from this program have been extensively validated and are considered suitable for climate research, salinity data require additional caution. Challenges include:
+
+\begin{itemize}
+    \item Conductivity cell fouling in long deployments
+    \item Drift in conductivity calibration over time
+    \item Sensitivity of salinity calculations to small errors in conductivity
+    \item Limited ability to validate deep ocean salinity without independent measurements
+\end{itemize}
+
+Users interested in salinity data should contact the authors to discuss data quality for specific deployments and variables of interest.
+
+\subsection{Pressure Data}
+
+Pressure data, where available, often show significant drift over deployment periods of 12-24 months. For this reason, salinity calculations in this dataset use fixed pressure values calculated from instrument depth rather than measured pressure. Users requiring pressure data should be aware of this limitation and potential drift issues.
+
+\subsection{Spatial Representation}
+
+Each deployment samples a single point in the deep ocean. While the mooring location remains consistent (within a few kilometers) across deployments, the measurements should not be assumed to represent basin-wide conditions. Horizontal gradients in deep ocean properties can be significant, particularly near boundaries or in regions of active deep circulation.
+
+\subsection{Temporal Gaps}
+
+While the Stratus mooring program aims for continuous coverage, short gaps (hours to days) occur during turnaround operations when the old mooring is recovered and the new one deployed. In a few cases, technical issues or weather delays have resulted in longer gaps between successive deployments. The timeline appendix provides a complete accounting of data coverage across the 2012-2025 period.

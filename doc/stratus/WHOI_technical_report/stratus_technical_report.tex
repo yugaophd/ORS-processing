@@ -1,0 +1,177 @@
+% WHOI Technical Report for Stratus Deep-Ocean Temperature and Salinity Data
+% Deployments 12-22 (2012-2025)
+% Compile with: pdflatex stratus_technical_report.tex
+
+\documentclass[12pt]{report}
+
+% Package imports
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{ifthen}
+\usepackage{times}  % Times font for WHOI standard
+\usepackage{setspace}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{indentfirst}
+
+% Page layout - WHOI standard
+\geometry{
+    letterpaper,
+    top=1in,
+    bottom=1in,
+    left=1in,
+    right=1in
+}
+
+% Line spacing
+\onehalfspacing
+
+% Hyperref setup
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    citecolor=blue,
+    pdftitle={Stratus Ocean Reference Station: Deep-Ocean Temperature and Salinity Data Report},
+    pdfauthor={Yu Gao, Woods Hole Oceanographic Institution},
+}
+
+% Global image path - needed for the individual reports
+\newcommand{\imagepath}{/Users/yugao/UOP/ORS-processing/img}
+\graphicspath{{/Users/yugao/UOP/ORS-processing/img/}}
+
+% Title page information
+\title{
+    \textbf{Stratus Ocean Reference Station:\\
+    Deep-Ocean Temperature and Salinity Data\\
+    Deployments 12-22 (2012-2025)}\\
+    \vspace{1cm}
+    \large Woods Hole Oceanographic Institution\\
+    Technical Report
+}
+
+\author{
+    Yu Gao\\
+    Upper Ocean Processes Group\\
+    Woods Hole Oceanographic Institution\\
+    Woods Hole, MA 02543\\
+    \texttt{yugao@whoi.edu}
+}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This technical report documents deep-ocean temperature and salinity records from the Stratus Ocean Reference Station (approximately 20$^{\circ}$S, 85$^{\circ}$W) for eleven consecutive deployments (Stratus 12 through Stratus 22, May 2012 to March 2025). During each deployment, paired Sea-Bird Scientific recorders (SBE16 or SBE37) were mounted about 39 m above the seafloor in approximately 4450 m water depth.
+
+The report focuses on methods and product quality: time-base verification, deployment/recovery trimming, spike detection, paired-sensor consistency checks, and metadata standardization to OceanSITES and CF conventions. Temperature is the primary mature product in this release, with deployment-by-deployment error statistics from paired instruments. Salinity variables are provided as processed products derived with TEOS-10 from conductivity, temperature, and depth-based pressure, and should be interpreted with deployment-specific caution where conductivity behavior is less stable.
+
+This volume serves as a reproducible processing record and deployment catalog for users who need traceable quality-control decisions, consistent file structure, and uncertainty context for deep-ocean climate analyses.
+\end{abstract}
+
+% Control the depth of the table of contents
+% 0 = chapters only, 1 = chapters and sections, 2 = chapters, sections, and subsections
+\setcounter{tocdepth}{1}
+
+\tableofcontents
+% \listoftables
+% \listoffigures
+
+% Include introductory chapter
+\chapter{Introduction}
+\input{00/introduction_chapter}
+
+% Include each deployment report as a chapter
+% Each report's \section commands will become sections within the chapter
+
+\chapter{Stratus 12 (2012-2014)}
+\input{12/stratus12_chapter}
+
+% Fallback macro definitions used by chapters 13-22.
+% These chapters are generated from templates that rely on per-deployment macro files.
+\providecommand{\projectname}{}
+\providecommand{\displayprojectname}{}
+\providecommand{\caseyear}{}
+\providecommand{\casenumber}{}
+\providecommand{\previouscasenumber}{}
+\providecommand{\imagepath}{}
+\providecommand{\HasNextDeploymentOverlap}{}
+\providecommand{\FirstInstrumentType}{}
+\providecommand{\SecondInstrumentType}{}
+\providecommand{\DeploymentSpike}{}
+\providecommand{\DeploymentRecordedSpike}{}
+\providecommand{\RecoverySpike}{}
+\providecommand{\RecoveryRecordedSpike}{}
+\providecommand{\FirstInstrument}{}
+\providecommand{\SecondInstrument}{}
+\providecommand{\PreviousDeploymentInstrument}{}
+\providecommand{\CurrentDeploymentInstrument}{}
+\providecommand{\pressureavailable}{}
+\providecommand{\pressurenote}{}
+\providecommand{\MeanDiffTemp}{}
+\providecommand{\StdDiffTemp}{}
+\providecommand{\StdSingleTemp}{}
+\providecommand{\MeanDiffCond}{}
+\providecommand{\StdDiffCond}{}
+\providecommand{\StdSingleCond}{}
+\providecommand{\MeanDiffPSal}{}
+\providecommand{\StdDiffPSal}{}
+\providecommand{\StdSinglePSal}{}
+\providecommand{\MeanDiffASal}{}
+\providecommand{\StdDiffASal}{}
+\providecommand{\StdSingleASal}{}
+\providecommand{\MeanDiffPres}{}
+\providecommand{\StdDiffPres}{}
+\providecommand{\StdSinglePres}{}
+\providecommand{\WindowSize}{}
+\providecommand{\ThresholdValue}{}
+
+\chapter{Stratus 13 (2014-2015)}
+\input{13/macros}
+\input{13/stratus13_chapter}
+
+\chapter{Stratus 14 (2015-2016)}
+\input{14/macros}
+\input{14/stratus14_chapter}
+
+\chapter{Stratus 15 (2016-2017)}
+\input{15/macros}
+\input{15/stratus15_chapter}
+
+\chapter{Stratus 16 (2017-2018)}
+\input{16/macros}
+\input{16/stratus16_chapter}
+
+\chapter{Stratus 17 (2018-2019)}
+\input{17/macros}
+\input{17/stratus17_chapter}
+
+\chapter{Stratus 18 (2019-2020)}
+\input{18/macros}
+\input{18/stratus18_chapter}
+
+\chapter{Stratus 19 (2020-2021)}
+\input{19/macros}
+\input{19/stratus19_chapter}
+
+\chapter{Stratus 20 (2021-2022)}
+\input{20/macros}
+\input{20/stratus20_chapter}
+
+\chapter{Stratus 21 (2022-2023)}
+\input{21/macros}
+\input{21/stratus21_chapter}
+
+\chapter{Stratus 22 (2023-2025)}
+\input{22/macros}
+\input{22/stratus22_chapter}
+
+\end{document}

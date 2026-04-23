@@ -1,0 +1,40 @@
+% Macros for NTAS 19 - used by NTAS_technical_report.tex
+\renewcommand{\HasNextDeploymentOverlap}{yes}  % "yes" or "no" - determines whether to include overlap section
+\renewcommand{\projectname}{NTAS}  % Default project name
+\renewcommand{\displayprojectname}{NTAS}
+\renewcommand{\caseyear}{2020}  % Project start year
+\renewcommand{\casenumber}{19}  % Current project/case number
+\renewcommand{\previouscasenumber}{18}  % Previous case number for overlap documentation
+\renewcommand{\imagepath}{/Users/yugao/UOP/ORS-processing/img}  % Path to images
+\renewcommand{\FirstInstrumentType}{SBE37}  % Type of first instrument (SBE37 or SBE16)
+\renewcommand{\SecondInstrumentType}{SBE37}  % Type of second instrument (SBE37 or SBE16)
+\renewcommand{\DeploymentSpike}{18-Oct-2020 18:15:00} % the actual deployment spike time by data
+\renewcommand{\DeploymentRecordedSpike}{18-Oct-2020 19:00:00}  % the deployment spike time on record
+\renewcommand{\RecoverySpike}{14-Nov-2021 21:50:40} % the actual recovery spike time by data
+\renewcommand{\RecoveryRecordedSpike}{14-Nov-2021 21:50:46} % the recovery spike time on record
+\renewcommand{\FirstInstrument}{12246}
+\renewcommand{\SecondInstrument}{12247}
+\renewcommand{\PreviousDeploymentInstrument}{SBE37 11392}  % Instrument from previous deployment (NTAS16) used in merge
+\renewcommand{\CurrentDeploymentInstrument}{\FirstInstrumentType{} \FirstInstrument{}}  % Instrument from current deployment used in merge
+\renewcommand{\pressureavailable}{yes}  % "yes" or "no" - whether pressure data is available for this deployment
+\renewcommand{\pressurenote}{}
+\renewcommand{\MeanDiffTemp}{0.0001}  % Mean temperature difference between sensors
+\renewcommand{\StdDiffTemp}{0.0023}   % Std of temperature difference between sensors
+\renewcommand{\StdSingleTemp}{0.0016} % Std of single temperature sensor
+\renewcommand{\MeanDiffCond}{0.0004}  % Mean conductivity difference between sensors
+\renewcommand{\StdDiffCond}{0.0001}   % Std of conductivity difference between sensors
+\renewcommand{\StdSingleCond}{0.0001} % Std of single conductivity sensor
+\renewcommand{\MeanDiffPSal}{0.0050}  % Mean practical salinity difference between sensors
+\renewcommand{\StdDiffPSal}{0.0006}   % Std of practical salinity difference between sensors
+\renewcommand{\StdSinglePSal}{0.0005} % Std of single practical salinity sensor
+\renewcommand{\MeanDiffASal}{0.0000}  % Mean absolute salinity difference between sensors
+\renewcommand{\StdDiffASal}{0.0000}   % Std of absolute salinity difference between sensors
+\renewcommand{\StdSingleASal}{0.0000} % Std of single absolute salinity sensor
+\renewcommand{\MeanDiffPres}{-1.7984} % Mean pressure difference between sensors
+\renewcommand{\StdDiffPres}{0.6114}   % Std of pressure difference between sensors
+\renewcommand{\StdSinglePres}{0.5145} % Std of single pressure sensor
+\renewcommand{\WindowSize}{12}  % Window size for spike detection
+\renewcommand{\ThresholdValue}{3}  % Threshold multiplier for standard deviation
+\ifthenelse{\equal{\pressureavailable}{no}}{
+    \renewcommand{\pressurenote}{ The pressure data is not available for this deployment, so the pressure variable is not shown in this figure.}
+}{}

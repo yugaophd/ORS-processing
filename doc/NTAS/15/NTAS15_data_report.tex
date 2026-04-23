@@ -1,0 +1,67 @@
+\documentclass[11pt]{article}
+% pdflatex -cnf-line="include texmf.cnf" NTAS15_data_report.tex
+
+\usepackage{geometry}
+\usepackage{hyperref}
+
+\geometry{a4paper, margin=1in}
+
+\newcommand{\projectname}{NTAS}
+\newcommand{\casenumber}{15}
+\newcommand{\previouscasenumber}{14}
+
+\newcommand{\DeploymentStart}{31-Jan-2016 16:02:00}
+\newcommand{\DeploymentEnd}{Not available (no returned data)}
+
+\newcommand{\FirstInstrumentType}{SBE16}
+\newcommand{\SecondInstrumentType}{SBE16}
+\newcommand{\FirstInstrument}{2323}
+\newcommand{\SecondInstrument}{2324}
+
+\title{\projectname{} \casenumber{} Data Report}
+\author{Yu Gao}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Introduction}
+This report documents the missing-data handling workflow for \projectname{} \casenumber{} and its role in constructing the continuous merged time series.
+
+\subsection{Deployment Summary}
+\begin{itemize}
+	\item \textbf{Deployment Period:} From \DeploymentStart{} to \DeploymentEnd{}
+	\item \textbf{Instruments Used:} \FirstInstrumentType{} \FirstInstrument{} and \SecondInstrumentType{} \SecondInstrument{}
+	\item \textbf{Merged Data:} No data were available for the merged dataset.
+	\item \textbf{Overlap with Previous Deployment (\projectname{} \previouscasenumber{}):} no
+	\item \textbf{Notes:} Due to a configuration error, neither of the SBE-16s deployed on \projectname{}-\casenumber{} returned data. This report describes how the missing data was handled as part of the merged time series.
+\end{itemize}
+
+\section{Pre-Processing}
+\subsection{Data Loading and Initial Processing}
+\begin{itemize}
+	\item No raw data files were available for processing.
+\end{itemize}
+
+\section{Data Export}
+\begin{itemize}
+	\item Fill missing data or create non-existent variables with -99999 values and encode them as missing values.
+	\item Carry forward time series for all five variables even if not present, by setting missing values to -99999.
+	\item Files are saved in the directory \texttt{/data/truncated/NTAS15} as
+	\texttt{NTAS15\_\FirstInstrument\_truncated.nc} and \texttt{NTAS15\_\SecondInstrument\_truncated.nc}.
+\end{itemize}
+
+\section{Merged Data Set}
+\subsection{Metadata and Selection Strategy}
+All necessary metadata are incorporated from individual deployments and retained in the merged file.
+
+\subsection{Overlap Analysis}
+\begin{itemize}
+	\item \textbf{Overlap determination:} No overlap was available between the end of NTAS-14 and the start of NTAS-15.
+	\item \textbf{Merging Method:} Data were merged at the truncation time for the NTAS-14 record.
+\end{itemize}
+
+\end{document}

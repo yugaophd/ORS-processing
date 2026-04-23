@@ -1,0 +1,39 @@
+\renewcommand{\projectname}{stratus}  % Default project name
+\renewcommand{\displayprojectname}{STRATUS}
+\renewcommand{\caseyear}{2017}  % Default year
+\renewcommand{\casenumber}{16}  % Default case number
+\renewcommand{\previouscasenumber}{15}  % Previous case number for overlap documentation
+\renewcommand{\imagepath}{/Users/yugao/UOP/ORS-processing/img}  % Path to images
+\renewcommand{\HasNextDeploymentOverlap}{no}  % "yes" or "no" - determines whether to include overlap section
+\renewcommand{\FirstInstrumentType}{SBE37}  % Type of first instrument (SBE37 or SBE16)
+\renewcommand{\SecondInstrumentType}{SBE37}  % Type of second instrument (SBE37 or SBE16)
+\renewcommand{\DeploymentSpike}{2017/05/06 19:00} % the actual deployment spike time by data
+\renewcommand{\DeploymentRecordedSpike}{2017/05/06 19:05:00}  % the deployment spike time on record
+\renewcommand{\RecoverySpike}{2018/04/12 14:50} % the actual recovery spike time by data
+\renewcommand{\RecoveryRecordedSpike}{2018/04/12 14:45:00} % the recovery spike time on record
+\renewcommand{\FirstInstrument}{10600}
+\renewcommand{\SecondInstrument}{10601}
+\renewcommand{\PreviousDeploymentInstrument}{\FirstInstrumentType{} 12257}  % Instrument from previous deployment used in merge
+\renewcommand{\CurrentDeploymentInstrument}{\FirstInstrumentType{} \FirstInstrument}  % Instrument from current deployment used in merge
+\renewcommand{\pressureavailable}{yes}  % "yes" or "no" - whether pressure data is available for this deployment
+\renewcommand{\pressurenote}{}
+\ifthenelse{\equal{\pressureavailable}{no}}{
+    \renewcommand{\pressurenote}{ The pressure data is not available for this deployment, so the pressure variable is not shown in this figure.}
+}{}
+\renewcommand{\MeanDiffTemp}{0.0004}  % Mean temperature difference between sensors
+\renewcommand{\StdDiffTemp}{0.0005}   % Std of temperature difference between sensors
+\renewcommand{\StdSingleTemp}{0.0004} % Std of single temperature sensor
+\renewcommand{\MeanDiffCond}{0.0002}  % Mean conductivity difference between sensors
+\renewcommand{\StdDiffCond}{0.0002}   % Std of conductivity difference between sensors
+\renewcommand{\StdSingleCond}{0.0001} % Std of single conductivity sensor
+\renewcommand{\MeanDiffPSal}{0.0018}  % Mean practical salinity difference between sensors
+\renewcommand{\StdDiffPSal}{0.0014}   % Std of practical salinity difference between sensors
+\renewcommand{\StdSinglePSal}{0.0010} % Std of single practical salinity sensor
+\renewcommand{\MeanDiffASal}{0.0019}  % Mean absolute salinity difference between sensors
+\renewcommand{\StdDiffASal}{0.0015}   % Std of absolute salinity difference between sensors
+\renewcommand{\StdSingleASal}{0.0011} % Std of single absolute salinity sensor
+\renewcommand{\MeanDiffPres}{0.513}  % Mean pressure difference between sensors
+\renewcommand{\StdDiffPres}{0.221}   % Std of pressure difference between sensors
+\renewcommand{\StdSinglePres}{0.176} % Std of single pressure sensor
+\renewcommand{\WindowSize}{12}  % Window size for spike detection
+\renewcommand{\ThresholdValue}{3}  % Threshold multiplier for standard deviation

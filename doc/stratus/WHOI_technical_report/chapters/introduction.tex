@@ -1,0 +1,60 @@
+\section{Background and Motivation}
+
+The deep ocean plays a critical role in the Earth's climate system by storing heat and regulating global temperature patterns. Understanding temperature and salinity variability in the deep ocean is essential for assessing climate change impacts and improving climate model predictions. However, the deep ocean remains poorly sampled due to the logistical challenges and costs associated with maintaining long-term observational programs at remote locations.
+
+Approximately a decade ago, the oceanographic community recognized the urgent need for sustained time series observations from the deep ocean. These measurements would serve multiple purposes: they could be assimilated into ocean models to improve forecasts, used to validate model representations of deep ocean processes, and analyzed to assess the realism of heat storage calculations in the deep ocean. In response to this need, OceanSITES—the international collaborative effort to collect sustained time series observations at open ocean sites under the Global Ocean Observing System (GOOS)—launched a coordinated effort to deploy temperature and salinity recorders in the deep ocean.
+
+\section{The OceanSITES Deep Ocean Program}
+
+The OceanSITES program established a framework for deploying deep ocean instrumentation on existing oceanographic moorings. Funds were raised for a pool of shared instruments, and individual research groups also contributed their own sensors. The Upper Ocean Processes Group at Woods Hole Oceanographic Institution (WHOI) joined this effort and committed to deploying pairs of temperature and salinity recorders on its long-term Ocean Reference Station moorings, including the Stratus, Northwest Tropical Atlantic Station (NTAS), and Woods Hole Oceanographic Time-series Site (WHOTS).
+
+The decision to deploy paired sensors at each site serves two important purposes:
+\begin{itemize}
+    \item \textbf{Redundancy:} If one instrument fails, data from the deployment can still be recovered from the companion sensor
+    \item \textbf{Quality Assessment:} The difference between paired co-located sensors provides an independent measure of data quality and instrument precision
+\end{itemize}
+
+\section{The Stratus Ocean Reference Station}
+
+The Stratus Ocean Reference Station is located in the eastern tropical Pacific Ocean at approximately 20°S, 85°W, in a region characterized by extensive stratocumulus cloud cover. The surface mooring has been maintained since October 2000 through a collaboration between WHOI and local partners, providing continuous measurements of air-sea interaction processes.
+
+The mooring is deployed in approximately 4450 meters of water and features a comprehensive suite of meteorological and oceanographic sensors. The deep temperature and salinity sensors discussed in this report are positioned at approximately 39 meters above the seafloor (approximately 4411 meters depth), providing a long-term record of conditions in the deep ocean.
+
+\subsection{Deployment Strategy}
+
+The Stratus mooring follows an annual deployment cycle, with each new mooring deployed shortly before recovering the previous one. This strategy typically results in brief overlap periods (hours to days) when both the old and new moorings are in the water simultaneously. These overlap periods provide valuable opportunities for intercomparison between successive deployments.
+
+The mooring location remains consistent across deployments, though small variations occur due to differences in anchor placement during each deployment. The nominal position is 20°S, 85°W, and actual anchor survey positions are documented for each deployment in the individual chapters of this report.
+
+\section{Scope and Organization of This Report}
+
+This technical report presents quality-controlled deep ocean temperature and salinity data from eleven consecutive Stratus deployments, spanning from May 2012 (Stratus 12) to March 2025 (Stratus 22). Each deployment is documented in a separate chapter that includes:
+
+\begin{itemize}
+    \item Deployment-specific metadata (dates, positions, instrument serial numbers)
+    \item Time correction and data truncation procedures
+    \item Quality control results including spike detection and removal
+    \item Statistical analysis of sensor differences
+    \item Data visualization showing raw and quality-controlled time series
+\end{itemize}
+
+Chapter 2 provides a comprehensive overview of the instrumentation and methodology common to all deployments. Individual deployment chapters (Chapters 3-13) follow a consistent format to facilitate comparison across the time series. The concluding chapter synthesizes findings across all deployments and discusses the overall quality of the dataset.
+
+\section{Data Availability and Standards Compliance}
+
+The quality-controlled datasets presented in this report are formatted following NetCDF Climate and Forecast (CF) conventions and OceanSITES data standards. This ensures interoperability with standard analysis tools and facilitates data sharing within the international research community.
+
+The processed data files include comprehensive metadata documenting:
+\begin{itemize}
+    \item Instrument specifications and calibration information
+    \item Deployment and recovery times and locations
+    \item Processing steps and quality control procedures applied
+    \item Statistical measures of data quality derived from paired sensor comparisons
+    \item Flags indicating data quality following OceanSITES conventions
+\end{itemize}
+
+At this stage, the primary focus has been on producing high-quality temperature time series with robust error estimates. While salinity data have been processed using the TEOS-10 (Thermodynamic Equation Of Seawater - 2010) algorithms, technical challenges with conductivity sensor calibration and quality control procedures for salinity continue. Therefore, users should exercise caution when using the salinity data and are encouraged to contact the authors to discuss data quality for specific deployments.
+
+\section{Acknowledgments}
+
+The Stratus Ocean Reference Station is supported by the National Oceanic and Atmospheric Administration (NOAA) Climate Observation Division. The deep ocean sensor program receives support from the OceanSITES program and NOAA. We thank the captains and crews of the R/V \textit{Moana Wave}, R/V \textit{Ronald H. Brown}, and other vessels that supported deployment and recovery operations. The technical staff of the WHOI Upper Ocean Processes Group, particularly the mooring operations team, have been essential to the success of this long-term observational program.
