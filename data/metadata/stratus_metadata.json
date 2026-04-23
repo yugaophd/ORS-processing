@@ -1,0 +1,69 @@
+{
+    "global_attributes": {
+      "site_code": "Stratus",
+      "deployment": "{case_number}",
+      "data_type": "OceanSITES time-series data",
+      "format_version": "1.4",
+      "principal_investigator": "Robert Weller",
+      "principal_investigator_email": "rweller@whoi.edu",
+      "experiment": "Stratus Ocean Reference Station",
+      "platform_type": "surface mooring",
+      "platform_code": "Stratus-{case_number}",
+      "institution": "WHOI",
+      "data_assembly_center": "WHOI-UOP",
+      "source": "Mooring observation",
+      "naming_authority": "OceanSITES",
+      "cdm_data_type": "Station",
+      "wmo_platform_code": "38400",
+      "network": "OceanSITES",
+      "platform_anchor_over_time": "{anchor_over_time}",
+      "platform_buoy_recovery_time": "{release_fired_time}",
+      "platform_deployment_cruise_name": "{deployment_cruise}",
+      "platform_recovery_cruise_name": "{recovery_cruise}",
+      "latitude_anchor_survey": "{latitude}",
+      "longitude_anchor_survey": "{longitude}",
+      "water_depth_from_ship_uncorrected_m": "{water_depth_from_ship_uncorrected}",
+      "water_depth_from_ship_corrected_m": "{water_depth_from_ship_corrected}",
+      "water_depth_from_mooring_diagram_m": "{water_depth_from_mooring_diagram}",
+      "instrument_model": "{instrument_model}",
+      "instrument_SN": "{instrument_SN}",
+      "instrument_manufacturer": "SeaBird Electronics",
+      "instrument_mount": "on mooring line {instrument_height_above_bottom}m above anchor",
+      "instrument_height_above_bottom_m": "{instrument_height_above_bottom}",
+      "instrument_depth": "{water_depth_from_ship_corrected - instrument_height_above_bottom}",
+      "instrument_depth_comment": "water depth from ship corrected minus instrument height above bottom",
+      "time_coverage_start": "{time_coverage_start}",
+      "time_coverage_end": "{release_fired_time}"
+    },
+    "variable_attributes": {
+      "sea_water_practical_salinity": {
+        "comment": "Practical salinity derived from TEOS-10 sw_sal calculation at a fixed depth of {depth} m."
+      },
+      "sea_water_absolute_salinity": {
+        "comment": "Absolute salinity derived from practical salinity measurements at {depth} m depth using the TEOS-10 sw_sal conversion algorithm"
+      },
+      "sea_water_pressure": {
+        "comment": "Pressure comes from instrument without any further processing."
+      },
+      "sea_water_electrical_conductivity": {
+        "comment": "Conductivity measured directly by the instrument sensor"
+      },
+      "sea_water_temperature": {
+        "comment": "Temperature measured directly by the instrument sensor"
+      }
+    },
+    "variable_mapping": {
+      "temp": "sea_water_temperature",
+      "sal": "sea_water_practical_salinity",
+      "press": "sea_water_pressure",
+      "abssal": "sea_water_absolute_salinity",
+      "cond": "sea_water_electrical_conductivity"
+    },
+    "default_fill_value": -99999.0,
+    "import_functions": [
+      "metadata.standardize_attribute_names",
+      "metadata.ensure_standard_attributes",
+      "metadata.add_geospatial_attributes",
+      "metadata.reorder_oceansites_attributes"
+    ]
+  }
