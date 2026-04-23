@@ -1,0 +1,50 @@
+% Introduction chapter for the Stratus Technical Report
+
+\section{Project Overview}
+
+Long-term, deep-ocean temperature monitoring is important for determination of ocean heat storage and to provide constraints for climate models. To increase the availability of deep temperature records, OceanSITES coordinated the deployment of deep temperature and conductivity sensors on selected moorings under the Global Ocean Observing System (GOOS). The WHOI Upper Ocean Processes Group (\url{https://uop.whoi.edu}) contributes to this effort through long-term deployments at the Stratus, NTAS, and WHOTS Ocean Reference Stations.
+
+This report documents the Stratus deep-record processing workflow and data products for deployments 12--22 (2012--2025). The main deliverable is a quality-controlled temperature record that includes uncertainty diagnostics from paired sensors for each deployment. Salinity and pressure data are also presented, but have not been fully quality controlled and should be used with caution.
+
+\section{The Stratus Ocean Reference Station}
+
+The Stratus Ocean Reference Station is located in the eastern tropical Pacific near 20$^{\circ}$S, 85$^{\circ}$W, in a region of persistent stratocumulus cloud cover. The surface mooring has been maintained since October 2000 through collaborative efforts led by WHOI.
+
+The moorings are deployed in an average water depth of about 4400 m and carry a broad meteorological and oceanographic sensor suite. The deep instruments analyzed here are installed about 39 m above the sea floor, just above the mooring's acoustic releases. Instrument depths range from 4191 m to 4526 m.
+
+\subsection{Deployment Strategy}
+
+Stratus generally follows an annual service cycle. A new mooring is deployed before the previous system is recovered, yielding short overlap periods (hours to days). These overlaps provide direct data intercomparisons across consecutive deployments.
+
+The nominal site remains fixed, with small interannual differences in anchor location from deployment operations. Surveyed anchor positions for each deployment are listed in the deployment-by-deployment metadata summaries.
+
+\section{Scope and Organization of This Report}
+
+This technical report covers eleven consecutive Stratus deployments, from May 2012 (Stratus 12) through March 2025 (Stratus 22). Each deployment chapter follows a consistent structure:
+
+\begin{itemize}
+    \item \textbf{Deployment Summary:} dates, positions, instrument types, and serial numbers
+    \item \textbf{Pre-Processing:} time-base verification and deployment/recovery truncation
+    \item \textbf{Truncation and Visualization:} definition of retained records and initial checks
+    \item \textbf{Quality Control:} spike screening, manual review, and paired-sensor statistics
+    \item \textbf{Results:} figures and tables summarizing retained data quality
+\end{itemize}
+
+Applying a common processing framework across all deployments enables consistent interpretation of long-term changes and instrument-to-instrument differences.
+
+\section{Data Availability and Standards Compliance}
+
+The datasets described in this report are generated in NetCDF format following Climate and Forecast (CF) and OceanSITES conventions for interoperability and long-term archive use.
+
+Each processed file includes metadata documenting:
+\begin{itemize}
+    \item Instrument specifications and calibration information
+    \item Deployment and recovery times and locations
+    \item Processing steps and quality control procedures applied
+    \item Statistical measures of data quality derived from paired sensor comparisons
+    \item Flags indicating data quality following OceanSITES conventions
+\end{itemize}
+
+Temperature is the most mature product in this release and has been quality controlled using robust paired-sensor error diagnostics. Temperature records are stored for each deployment and merged into a continuous time series using deployment overlap to determine the optimal merge point. Data gaps are filled with standard fill values. The merged, quality-controlled temperature data have been published (\href{https://doi.org/10.26027/DATAKX5CQK}{doi:10.26027/DATAKX5CQK}) and are publicly available.
+
+Pressure and salinity are plotted and stored as a part of the processing steps, but have not been published due to quality concerns. Pressure records (available for deployments where Seabird SBE-37 sensors were used) show time-dependent drift in the weeks following initial deployment that has not been corrected. Practical and absolute salinity are calculated using TEOS-10 (Thermodynamic Equation Of Seawater 2010). Because the uncorrected pressure drift would impact the salinity calculation, a constant pressure, determined from the water depth and instrument height above bottom, is used in the TEOS equations instead of the measured pressure.
