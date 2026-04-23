@@ -1,73 +1,141 @@
-# ORS-processing project
+# ORS-processing
 
-Create merged deep temperature for three ORS sites: Stratus, NTAS and WHOTS.
+Python pipeline for processing deep-ocean temperature and salinity records from the WHOI Upper Ocean Processes Group (UOP) Ocean Reference Stations (ORS): **Stratus** (deployments 12–22, 2012–2025) and **NTAS** (deployments 11–20, 2011–2022).
 
-## To-Do List
+**Published datasets:**
+- Stratus merged temperature: [doi:10.26027/DATAKX5CQK](https://doi.org/10.26027/DATAKX5CQK)
+- NTAS merged temperature: [doi:10.26027/DATATLTM44](https://doi.org/10.26027/DATATLTM44)
 
-- [ ] Refactor the `mat_to_xarray` function to handle metadata more gracefully.
-- [ ] Implement unit tests for data processing functions.
-- [ ] Optimize the data visualization module for larger datasets.
-- [ ] Update the documentation to include new visualization features.
-- [ ] Write a new script to filter out the T/S during deployment, keep the deep T/S data.
+---
 
-# Architecture of the Code
+## Environment Setup
 
-- `src/netcdf.py` contains functions for reading .mat files, incorporating metadata, converting to NetCDF format, and saving the output.
-- `src/pre-process_stratusXX.py` is the main file that uses the funcstions in `src/netcdf.py` to pre-process the data.
-- `src/qc_stratusXX.py` quality control, including spike removal and difference analysis.
-- `src/merge_stratusXX.py` merge and analyze the overlapping observational datasets from neighboring Stratus missions to ensure seamless continuity and data integrity.
-- `environment.yml` can be used to create a mamba/conda environment:
-  ```bash
-  mamba env create -f environment.yml -n ors
-  ```
-  This will create a new mamba environment named `ors`.
+This project uses a conda/mamba environment defined in `src/environment.yml`. The `gsw` package (TEOS-10) must be installed separately.
 
-If you're using mamba, the process for setting up your Jupyter Lab environment to access the ors environment is as follows:
+```bash
+mamba env create -f src/environment.yml -n uop
+mamba activate uop
+mamba install gsw
+```
 
-bash
-Copy code
-mamba activate ors
-mamba install ipykernel
-python -m ipykernel install --user --name=ors --display-name="Python (ors)"
+> **Note:** The environment name is `uop`. All scripts assume this environment is active.
 
-After running these commands:
+---
 
-Activate your environment with mamba activate ors to switch to the ors environment.
-Install ipykernel using mamba to ensure that Jupyter can use this environment as a kernel. mamba is a faster alternative to conda and can be used interchangeably for installing packages.
-Register the environment with Jupyter by adding it as a new kernel. This is done with the python -m ipykernel install command, which makes your ors environment available as a kernel option in Jupyter notebooks and Jupyter Lab.
-Once you've registered the ors environment as a kernel, restart Jupyter Lab. You should then be able to select "Python (ors)" from the kernel options, ensuring that your notebooks have access to the packages and environment you've set up for your project. This step is crucial for maintaining reproducibility and consistency across development environments, especially when working with data processing and analysis pipelines.
+## Repository Structure
 
-## Data Directory Structure
+```
+src/                         # All processing source code
+  all_stratus_processing.py  # Per-deployment pre-processing (Stratus)
+  all_NTAS_processing.py     # Per-deployment pre-processing (NTAS)
+  all_stratus_qc.py          # Quality control (Stratus)
+  all_NTAS_qc.py             # Quality control (NTAS)
+  all_merged_plot.py         # Merged dataset plots (Stratus)
+  all_merged_NTAS_temp_plot.py  # Merged dataset plots (NTAS)
+  stratus_merging/           # Per-deployment merge scripts (Stratus)
+  NTAS_merging/              # Per-deployment merge scripts (NTAS)
+  merge.py                   # Core merge logic
+  metadata.py                # CF/OceanSITES metadata helpers
+  metadata_merger.py         # Attribute merging across deployments
+  netcdf_sbe37.py            # SBE37 MATLAB → xarray conversion
+  qc_function.py             # Spike detection and removal
+  plot_function.py           # Visualization functions
+  util.py                    # Shared utilities
+  stratus*_config.json       # Per-deployment configs (Stratus)
+  NTAS*_config.json          # Per-deployment configs (NTAS)
+  environment.yml            # Conda environment specification
 
-- `data/` will contain all data files for this project.
-- `data/external` contains the raw data files collected from the deployment.
-- `data/metadata` contains the JSON files used for variable attributes.
-- `data/processed` contains the processed netCDF output file.
+data/
+  external/                  # Raw MATLAB instrument files (not tracked in git)
+  metadata/                  # JSON files for variable/global attributes
+  processed/                 # Output NetCDF files (not tracked in git)
+    stratusXX/               # Truncated and cleaned files per deployment
+    merged_stratus/          # Final merged Stratus dataset
+    merged_NTAS/             # Final merged NTAS dataset
 
-## Images Directory
+doc/
+  stratus/WHOI_technical_report/  # LaTeX technical report (Stratus)
+  NTAS/WHOI_technical_report/     # LaTeX technical report (NTAS)
 
-- `img/` will contain plots and other images used for data visualization.
+img/                         # Figures generated by processing scripts
+```
 
-## Creating Metadata from MATLAB Files
+> `data/external/` and `data/processed/` are excluded from git (large binary files). Raw `.mat` files are stored on the shared drive (`/Users/Shared/ORS`). Processed NetCDF files can be reproduced by running the pipeline below.
 
-This repository provides a Python script to extract metadata from MATLAB files and convert it into a structured JSON format. Metadata extraction is essential for organizing and documenting scientific data, enabling better data management, sharing, and interoperability.
+---
 
-### Step-by-Step Guide
+## Processing Pipeline
 
-1. **Pre-processing:**
-   - Use the `pre-process_stratusXX.py` time check, interpolate time and truncate the temp, cond, and press. 
-   - Produce truncated datasets: StratusXX_instrument_truncated.py at '/Users/yugao/UOP/ORS-processing/data/processed/StratusXX/'
+Each project (Stratus / NTAS) follows four stages. Edit the `config_file` variable at the top of each script to select the deployment before running.
 
-2. **Quality Control:**
-   - Use `qc_stratus17.py` Quality Control and deployment catalog for all variables:{'temp', 'cond', 'sal', 'abs_sal', 'press'}
-   - Produce truncated datasets: StratusXX_instrument_cleaned.py at '/Users/yugao/UOP/ORS-processing/data/processed/StratusXX/'
-   - Create Human In the Loop catalog in /Users/yugao/UOP/ORS-processing/img
+### Stage 1 — Pre-processing (per deployment)
 
-3. **Merge datasets:**
-   - Use `merge_stratus17.py` merge and analyze the overlapping observational datasets from neighboring Stratus missions to ensure seamless continuity and data integrity.
+Reads raw MATLAB files, converts to xarray, corrects time base, truncates to anchor-over to release-fired window, recalculates salinity using TEOS-10 with depth-derived pressure, and saves `*_truncated.nc`.
 
+```bash
+python src/all_stratus_processing.py   # Stratus
+python src/all_NTAS_processing.py      # NTAS
+```
 
-This concise guide outlines the essential steps for creating metadata from MATLAB files using Python. Adjust and expand each step as needed for your project's requirements.
+Output: `data/processed/stratusXX/` or `data/processed/NTASXX/`
 
-### Usage
+### Stage 2 — Quality Control (per deployment)
+
+Applies rolling-window spike detection, computes paired-sensor difference statistics, generates HITL catalog figures, and saves `*_cleaned.nc`.
+
+```bash
+python src/all_stratus_qc.py   # Stratus
+python src/all_NTAS_qc.py      # NTAS
+```
+
+Output: `data/processed/stratusXX/*_cleaned.nc`, figures in `img/`
+
+### Stage 3 — Merging (per deployment pair)
+
+Selects the preferred instrument for the merged record, determines merge point from overlap period, and concatenates deployments.
+
+```bash
+python src/stratus_merging/merge_XXYY.py   # e.g. merge_1213.py
+python src/NTAS_merging/merge_XX.py
+```
+
+Output: `data/processed/merged_stratus/`, `data/processed/merged_NTAS/`
+
+### Stage 4 — Merged Dataset Plots
+
+Generates full time-series plots with merge-point annotations and distance panels.
+
+```bash
+python src/all_merged_plot.py              # Stratus
+python src/all_merged_NTAS_temp_plot.py    # NTAS
+```
+
+Output: figures in `img/STRATUS/` and `img/NTAS/`
+
+---
+
+## Technical Reports
+
+LaTeX source for the WHOI technical reports is in `doc/`. Each report has a master `.tex` file that `\input`s per-deployment chapters. Compile with:
+
+```bash
+cd doc/stratus/WHOI_technical_report
+pdflatex stratus_technical_report.tex
+pdflatex stratus_technical_report.tex   # Second pass for cross-references
+
+cd doc/NTAS/WHOI_technical_report
+pdflatex NTAS_technical_report.tex
+pdflatex NTAS_technical_report.tex
+```
+
+> Build artifacts (`.aux`, `.log`, `.out`, `.toc`, `.pdf`) are excluded from git.
+
+---
+
+## Key Design Decisions
+
+- **Salinity recalculation:** Measured pressure is not used for salinity. A fixed pressure derived from instrument depth via `gsw.p_from_z()` is used instead, because SBE-37 pressure records show time-dependent drift that has not been corrected.
+- **CF/OceanSITES compliance:** Variables are renamed to CF standard names (`sea_water_temperature`, etc.) and metadata is standardized via `metadata.py` before saving.
+- **Fill values:** `-99999.0` (float32) for all missing data; encoded via `xarray` `encoding` dict.
+- **Time:** Decoded as `cftime`; converted to matplotlib floats with `util.convert_cftime_to_matplotlib()` for plotting.
 
