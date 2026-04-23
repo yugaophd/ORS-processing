@@ -1,1 +1,1 @@
-"../../data/metadata/OS_NTAS_2016_D_TS.json"
+{"attributes": {"site": "[[array(['Stratus'], dtype='<U7')]]", "deployment": "[[array(['15'], dtype='<U2')]]", "principal_investigator": "[[array(['Robert Weller'], dtype='<U13')]]", "institution": "[[array([[(array(['WHOI']", "project": "dtype='<U4')", "platform_type": "[[array([[(array(['STRATUS']", "platform_year": "dtype='<U7')", "time_coverage_start": "2016-06-12T18:25:01Z", "time_coverage_end": "2017-05-15T00:45:01Z", "time_coverage_duration": "P336D", "latitude_anchor_survey": 
