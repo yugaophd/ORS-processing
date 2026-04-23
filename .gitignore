@@ -1,3 +1,19 @@
 **/.ipynb_checkpoints/
 .ipynb_checkpoints/
 __pycache__/
+
+# Processed data (large NetCDF files - store in data archive)
+data/processed/
+data/external/
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.pdf
+
+# Misc
+doc/x.log
