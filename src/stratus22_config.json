@@ -18,7 +18,7 @@
       "from_mooring_diagram": 4300
     },
     "deployment_spike_times": {
-      "start": "2023-12-01T10:55:00",
+      "start": "2023-12-01T12:00:00", 
       "end": "2023-12-01T17:00:00"
     },
     "recovery_spike_times": {

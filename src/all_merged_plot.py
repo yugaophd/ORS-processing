@@ -1,5 +1,5 @@
 # %%
-# Script to plot all merged Stratus datasets from Stratus 12 to the latest deployment.
+# Script to plot all merged {project} datasets from {project} 12 to the latest deployment.
 # Creates individual plots for each merged dataset and optionally a summary plot.
 
 import os
@@ -12,27 +12,30 @@ from plot_function import plot_merged_dataset
 # %%
 # Set working directory and path definitions
 os.chdir('/Users/yugao/UOP/ORS-processing/src')
-data_dir = '/Users/yugao/UOP/ORS-processing/data/processed/merged_stratus'  # Updated path based on your listing
-img_dir = '/Users/yugao/UOP/ORS-processing/img'
+
+project = 'STRATUS'
+
+data_dir = f'/Users/Shared/ORS/DEEP_TS/{project}/merged_{project}'  # Updated path based on your listing
+img_dir = f'/Users/yugao/UOP/ORS-processing/img/{project}'
 
 # Ensure output directories exist
 os.makedirs(img_dir, exist_ok=True)
 
 # Function to load and process all merged datasets
 def load_all_merged_datasets():
-    """Load all available merged Stratus datasets."""
+    """Load all available merged {project} datasets."""
     all_datasets = []
     all_ranges = []
     
     # Search for merged files
     for file in sorted(os.listdir(data_dir)):
-        if file.endswith('.nc') and file.startswith('merged_stratus'):
+        if file.endswith('.nc') and file.startswith('merged'):
             try:
-                # Extract case range from filename (merged_stratus12_to_stratusXX.nc)
+                # Extract case range from filename (merged_{project}XX_to_{project}XX.nc)
                 parts = file.replace('.nc', '').split('_')
                 if len(parts) >= 4 and parts[2] == 'to':
-                    start_case = parts[1]  # stratus12
-                    end_case = parts[3]    # stratusXX
+                    start_case = parts[1]  # {project}XX
+                    end_case = parts[3]    # {project}XX
                     
                     # Load the dataset
                     ds = xr.open_dataset(os.path.join(data_dir, file))
@@ -102,9 +105,9 @@ def create_comparison_plots(datasets, ranges):
         return
         
     # Variables to compare
-    variables = ['sea_water_temperature', 'sea_water_practical_salinity']
-    titles = ['Sea Water Temperature', 'Sea Water Practical Salinity']
-    units = ['°C', 'PSU']
+    variables = ['sea_water_temperature']
+    titles = ['Sea Water Temperature']
+    units = ['°C']
     
     # Create a plot for each variable
     for var_idx, var_name in enumerate(variables):
@@ -142,7 +145,7 @@ def create_comparison_plots(datasets, ranges):
         plt.close()
 
 if __name__ == "__main__":
-    print("Plotting all merged Stratus datasets...")
+    print("Plotting all merged {project} datasets...")
     datasets, ranges = load_all_merged_datasets()
     
     # Plot individual datasets

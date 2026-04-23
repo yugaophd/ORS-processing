@@ -454,6 +454,29 @@ def plot_deployment_recovery(deployment_spike_data,
     plt.close()
 
 
+def _build_gap_masked_series(da, gap_threshold_hours=48):
+    """
+    Return (times, values) arrays with np.nan inserted immediately after any time gap
+    larger than gap_threshold_hours so matplotlib does not draw a connecting line.
+    """
+    import numpy as np, pandas as pd
+    times = pd.to_datetime(da.time.values)
+    vals  = da.values.copy().astype(float)
+    # Replace fill values with NaN
+    vals[vals == -99999.0] = np.nan
+
+    diffs_h = np.diff(times.astype('int64')) / 1e9 / 3600  # seconds -> hours
+    insert_indices = np.where(diffs_h > gap_threshold_hours)[0] + 1  # insert before these
+
+    if len(insert_indices) == 0:
+        return times, vals
+
+    # Insert NaN rows at each gap boundary
+    out_times = np.insert(times, insert_indices, times[insert_indices])
+    out_vals  = np.insert(vals,  insert_indices, np.nan)
+    return out_times, out_vals
+
+
 def plot_merge_points(dataset, axes, color='gray', linestyle='--', linewidth=1.5, 
                      alpha=0.7, annotate=False):
     """
@@ -522,7 +545,7 @@ def plot_merge_points(dataset, axes, color='gray', linestyle='--', linewidth=1.5
                        color=color, fontsize=9, alpha=alpha)
     
     return lines
-def plot_merged_dataset(dataset, save_path, case_name0=None, case_name1=None, figsize=(12, 20),
+def plot_merged_dataset(dataset, save_path, case_name0=None, case_name1=None, figsize=(12, 12),
                       variables=None, colors=None, titles=None, add_merge_points=True,
                       annotate_merge_points=False):
     """
@@ -533,10 +556,10 @@ def plot_merged_dataset(dataset, save_path, case_name0=None, case_name1=None, fi
     if variables is None:
         variables = [
             'sea_water_temperature',
-            'sea_water_practical_salinity', 
-            'sea_water_pressure',
-            'sea_water_electrical_conductivity',
-            'sea_water_absolute_salinity'
+            # 'sea_water_practical_salinity', 
+            # 'sea_water_pressure',
+            # 'sea_water_electrical_conductivity',
+            # 'sea_water_absolute_salinity'
         ]
     
     # Default colors if not specified
@@ -581,7 +604,8 @@ def plot_merged_dataset(dataset, save_path, case_name0=None, case_name1=None, fi
             break
             
         idx = variables.index(var)  # Get original index for color and title
-        axs[i].plot(dataset[var].time, dataset[var], 
+        _t, _v = _build_gap_masked_series(dataset[var])
+        axs[i].plot(_t, _v,
                   label=var.replace('_', ' ').title(), 
                   color=colors[idx % len(colors)])
         axs[i].set_title(titles[idx] if idx < len(titles) else var.replace('_', ' ').title())
@@ -592,14 +616,19 @@ def plot_merged_dataset(dataset, save_path, case_name0=None, case_name1=None, fi
     # Calculate distances
     distance_da = calculate_distance_from_reference(dataset)
     consecutive_distance_da = calculate_consecutive_distances(dataset)
-    
+
+    # Derive reference label from dataset attributes
+    _platform = dataset.attrs.get('platform_code', '').split(',')[0].strip()
+    _first_deploy = dataset.attrs.get('deployment', '').split(',')[0].strip()
+    _ref_label = f"{_platform} {_first_deploy}" if _first_deploy else _platform
+
     if distance_da is not None:
         # Use the last axis for distance
         dist_ax = axs[-1]
         dist_ax.plot(distance_da.time, distance_da, color='darkred', drawstyle='steps-post', 
-                   linewidth=2, label='Distance from STRATUS 12')
-        dist_ax.set_title('STRATUS Site Distances')
-        dist_ax.set_ylabel('Distance from STRATUS 12 (km)')
+                   linewidth=2, label=f'Distance from {_ref_label}')
+        dist_ax.set_title(f'{_platform} Site Distances')
+        dist_ax.set_ylabel(f'Distance from {_ref_label} (km)')
         dist_ax.grid(True)
         dist_ax.legend(loc='upper left')
         
@@ -624,10 +653,17 @@ def plot_merged_dataset(dataset, save_path, case_name0=None, case_name1=None, fi
     axs[-1].set_xlabel('Time')
     
     # Add time coverage information
-    if 'time_coverage_start' in dataset.attrs and 'time_coverage_end' in dataset.attrs:
-        time_start = pd.to_datetime(dataset.attrs['time_coverage_start']).strftime('%Y-%m-%d')
-        time_end = pd.to_datetime(dataset.attrs['time_coverage_end']).strftime('%Y-%m-%d')
+    # if 'time_coverage_start' in dataset.attrs and 'time_coverage_end' in dataset.attrs:
+    #     time_start = pd.to_datetime(dataset.attrs['time_coverage_start']).strftime('%Y-%m-%d')
+    #     time_end = pd.to_datetime(dataset.attrs['time_coverage_end']).strftime('%Y-%m-%d')
+    #     fig.suptitle(f"Time Series Data: {time_start} to {time_end}", fontsize=12)
+    # Add time coverage information (derive from coordinates instead of attrs)
+    if "time" in dataset.coords:
+        t = pd.to_datetime(dataset["time"].values)
+        time_start = pd.Timestamp(t.min()).strftime("%Y-%m-%d")
+        time_end   = pd.Timestamp(t.max()).strftime("%Y-%m-%d")
         fig.suptitle(f"Time Series Data: {time_start} to {time_end}", fontsize=12)
+
     
     # Adjust layout
     plt.tight_layout()

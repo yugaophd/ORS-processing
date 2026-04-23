@@ -44,7 +44,7 @@ def is_variable_observed(da, fill_value=-99999.0):
 
 def get_sampling_frequency(ds):
     """
-    Calculate sampling frequency from time coordinate with debugging.
+    Calculate sampling frequency from time coordinate.
     
     Parameters:
     ds (xr.Dataset): The dataset
@@ -59,49 +59,25 @@ def get_sampling_frequency(ds):
     if len(time_vals) < 2:
         return "Insufficient data"
     
-    # Debug: Print first few time values
-    print(f"First 5 time values: {time_vals[:5]}")
-    
     # Calculate time differences
-    try:
-        # Convert to pandas datetime if not already
-        if hasattr(time_vals[0], 'astype'):
-            # This handles numpy datetime64
-            time_series = pd.to_datetime(time_vals)
-        else:
-            time_series = pd.to_datetime(time_vals)
-        
-        time_diffs = time_series.diff().dropna()
-        
-        # Debug: Print first few differences
-        print(f"First 5 time differences: {time_diffs.head()}")
-        
-        # Get the most common time difference (mode)
-        mode_diff = time_diffs.mode()
-        if len(mode_diff) == 0:
-            return "Irregular"
-        
-        # Get the most frequent interval
-        most_common_diff = mode_diff.iloc[0]
-        
-        # Convert to minutes
-        interval_seconds = most_common_diff.total_seconds()
-        interval_minutes = interval_seconds / 60
-        
-        # Debug: Print calculated intervals
-        print(f"Interval: {interval_seconds} seconds = {interval_minutes} minutes")
-        
-        if interval_minutes < 1:
-            return f"{interval_seconds:.0f} sec"
-        elif interval_minutes < 60:
-            return f"{interval_minutes:.0f} min"
-        else:
-            interval_hours = interval_minutes / 60
-            return f"{interval_hours:.1f} hr"
-            
-    except Exception as e:
-        print(f"Error calculating sampling frequency: {e}")
-        return f"Error: {str(e)}"
+    time_diffs = np.diff(pd.to_datetime(time_vals))
+    
+    # Get the most common time difference (mode)
+    mode_diff = pd.Series(time_diffs).mode()
+    if len(mode_diff) == 0:
+        return "Irregular"
+    
+    # Convert to minutes
+    interval_seconds = mode_diff[0].total_seconds()
+    interval_minutes = interval_seconds / 60
+    
+    if interval_minutes < 1:
+        return f"{interval_seconds:.0f} sec"
+    elif interval_minutes < 60:
+        return f"{interval_minutes:.0f} min"
+    else:
+        interval_hours = interval_minutes / 60
+        return f"{interval_hours:.1f} hr"
 
 def extract_variables_from_netcdf_files(base_path):
     """

@@ -18,12 +18,12 @@
     "from_mooring_diagram": 5054
   },
   "deployment_spike_times": {
-    "start": "2020-01-08 18:07:00",
-    "end": "2020-01-08 18:32:00"
+    "start": "2021-11-07 16:00:00",
+    "end": "2021-11-07 17:00:00"
   },
   "recovery_spike_times": {
-    "start": "2020-10-27 12:30:00",
-    "end": "2020-10-27 15:55:00"
+    "start": "2022-10-16 23:34:00",
+    "end": "2022-10-17 03:31:00"
   },
   "processing_params": {
     "truncation_hours_after_deployment": 4,

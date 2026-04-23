@@ -164,7 +164,7 @@ def create_hitl_catalog(original_ds, qc_ds, deployment_id, instrument_number, ou
     title_name = display_name if display_name is not None else deployment_id
     
     fig, axs = plt.subplots(5, 1, figsize=(15, 25))
-    fig.suptitle(f"Deployment {title_name}: Original vs QC Data", fontsize=16)
+    # fig.suptitle(f"Deployment {title_name}: Original vs QC Data", fontsize=16)
     
     for i, var in enumerate(variables):
         # Plot original data
@@ -176,11 +176,10 @@ def create_hitl_catalog(original_ds, qc_ds, deployment_id, instrument_number, ou
         # Highlight removed points
         mask = np.isnan(qc_ds[var]) & ~np.isnan(original_ds[var])
         if np.any(mask):
-            axs[i].plot(original_ds[var].where(mask).time, original_ds[var].where(mask), 
-                        'rx', label='Removed', markersize=4)
+            axs[i].plot(original_ds[var].where(mask).time, original_ds[var].where(mask), 'rx', label='Removed', markersize=4)
         
         axs[i].set_title(f"{var}")
-        axs[i].legend()
+        axs[i].legend(loc='upper right')
         
         # Add textbox with statistics
         original_mean = original_ds[var].mean().values

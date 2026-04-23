@@ -10,7 +10,7 @@ import numpy as np
 from qc_function import remove_spikes, compute_diff_stats
 
 project_name = 'stratus'
-project_number = "22"
+project_number = "14"
 case_name = f'{project_name}{project_number}' #'stratus19'
 
 version = 'v1'
@@ -220,8 +220,7 @@ ds1.to_netcdf(f'{data_path}/{project_name}{project_number}_{instrument_SN2}_clea
 output_dir = f'../doc/{project_name}/{project_number}'
 
 # Call the function to export LaTeX tables
-export_diff_stats(sensor1_data, sensor2_data, instrument_number1,instrument_number2, 
-                    output_dir, project_name, project_number)
+export_diff_stats(sensor1_data, sensor2_data, instrument_number1,instrument_number2, output_dir, project_name, project_number)
 
 # %%
 # Export spike statistics to LaTeX

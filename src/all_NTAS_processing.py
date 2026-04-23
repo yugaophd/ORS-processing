@@ -15,7 +15,7 @@ import glob
 
 # %%
 # Configuration: specify the deployment config file
-config_file = 'NTAS19_config.json'  # Edit this path as needed
+config_file = 'NTAS20_config.json'  # Edit this path as needed
 data_path = '/Users/Shared/ORS/DEEP_TS/NTAS'
 version = 'v1'  # Specify version'
 
@@ -97,7 +97,13 @@ for instrument in config['instruments']:
     release_fired_time_key = time_attr_keys.get('release_fired_time', 'platform_buoy_recovery_time')
     anchor_over_time = pd.to_datetime(ds.attrs[anchor_over_time_key])
     release_fired_time = pd.to_datetime(ds.attrs[release_fired_time_key])
-    
+    if 'release_fired_time' in config and config['release_fired_time'] is not None:
+        print(f"Using release fired time from config for NTAS12")
+        release_fired_time = pd.to_datetime(config['release_fired_time'])
+    if 'anchor_over_time' in config and config['anchor_over_time'] is not None:
+        print(f"Using anchor over time from config for NTAS12")
+        anchor_over_time = pd.to_datetime(config['anchor_over_time'])
+
     hours_after_deployment = config['processing_params']['truncation_hours_after_deployment']
     time_coverage_start = anchor_over_time + pd.Timedelta(hours=hours_after_deployment)
     

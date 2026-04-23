@@ -13,8 +13,9 @@ Create merged deep temperature for three ORS sites: Stratus, NTAS and WHOTS.
 # Architecture of the Code
 
 - `src/netcdf.py` contains functions for reading .mat files, incorporating metadata, converting to NetCDF format, and saving the output.
-- `src/ORS2024_Process.py` is the main file that uses the funcstions in `src/netcdf.py` to process the data.
-- `src/plot.py` contain functions visualizing the data from your NetCDF files. This module can import the processed data and create plots, which can be saved in the img/ directory.
+- `src/pre-process_stratusXX.py` is the main file that uses the funcstions in `src/netcdf.py` to pre-process the data.
+- `src/qc_stratusXX.py` quality control, including spike removal and difference analysis.
+- `src/merge_stratusXX.py` merge and analyze the overlapping observational datasets from neighboring Stratus missions to ensure seamless continuity and data integrity.
 - `environment.yml` can be used to create a mamba/conda environment:
   ```bash
   mamba env create -f environment.yml -n ors
@@ -53,23 +54,18 @@ This repository provides a Python script to extract metadata from MATLAB files a
 
 ### Step-by-Step Guide
 
-1. **Load MATLAB Files:**
-   Use the `scipy.io` library in Python to load MATLAB files into your Python environment. This library provides functions to read MATLAB files directly.
+1. **Pre-processing:**
+   - Use the `pre-process_stratusXX.py` time check, interpolate time and truncate the temp, cond, and press. 
+   - Produce truncated datasets: StratusXX_instrument_truncated.py at '/Users/yugao/UOP/ORS-processing/data/processed/StratusXX/'
 
-2. **Extract Basic Information:**
-   Extract basic information such as latitude, longitude, and depth from the loaded MATLAB data using custom extraction functions.
+2. **Quality Control:**
+   - Use `qc_stratus17.py` Quality Control and deployment catalog for all variables:{'temp', 'cond', 'sal', 'abs_sal', 'press'}
+   - Produce truncated datasets: StratusXX_instrument_cleaned.py at '/Users/yugao/UOP/ORS-processing/data/processed/StratusXX/'
+   - Create Human In the Loop catalog in /Users/yugao/UOP/ORS-processing/img
 
-3. **Process Dimensions:**
-   Calculate dimensions for the dataset, including time, depth, latitude, and longitude.
+3. **Merge datasets:**
+   - Use `merge_stratus17.py` merge and analyze the overlapping observational datasets from neighboring Stratus missions to ensure seamless continuity and data integrity.
 
-4. **Process Variables:**
-   Process variable metadata such as variable names, dimensions, data types, and attributes.
-
-5. **Process Attributes:**
-   Extract attributes such as geospatial information, time coverage, and resolution.
-
-6. **Create Final JSON Structure:**
-   Combine dimensions, variables, and attributes into a final JSON structure.
 
 This concise guide outlines the essential steps for creating metadata from MATLAB files using Python. Adjust and expand each step as needed for your project's requirements.
 
