@@ -1,8 +1,9 @@
-% Chapter content for Stratus 12 - extracted from STRATUS12_data_report.tex
+% Chapter content for Stratus 12 - extracted from Stratus12_data_report.tex
 % This file contains only the body content without preamble or document structure
 
 % Define deployment-specific commands
-\newcommand{\projectname}{STRATUS}
+\newcommand{\projectname}{stratus}
+\newcommand{\displayprojectname}{Stratus}
 \newcommand{\caseyear}{2012}
 \newcommand{\casenumber}{12}
 \newcommand{\nextcasenumber}{13}
@@ -14,24 +15,27 @@
 \newcommand{\RecoveryRecordedSpike}{03/08/2014 17:26}
 \newcommand{\FirstInstrument}{1876}
 \newcommand{\SecondInstrument}{1879}
+\newcommand{\CurrentDeploymentInstrument}{\FirstInstrumentType{} \FirstInstrument}
 \newcommand{\pressureavailable}{no}
 \newcommand{\pressurenote}{ The pressure data is not available for this deployment, so the pressure variable is not shown in this figure.}
 \newcommand{\WindowSize}{12}
 \newcommand{\ThresholdValue}{3}
 \newcommand{\HasNextDeploymentOverlap}{no}
 
-\section{Deployment Summary}
+\section{Introduction}
+This chapter details the preprocessing, quality control, 
+and analysis steps for the deep temperature and salinity (T/S) data from \displayprojectname{} \casenumber{} moorings.
+
+\subsection{Deployment Summary}
 \begin{itemize}
     \item \textbf{Deployment Period:} From \DeploymentSpike{} to \RecoverySpike{}
     \item \textbf{Instruments Used:} \FirstInstrumentType{} \FirstInstrument{} and \SecondInstrumentType{} \SecondInstrument{}
-    \item \textbf{Overlap with Next Deployment (\projectname{} \nextcasenumber{}):} \HasNextDeploymentOverlap{}
+    \item \textbf{Merged Data:} \CurrentDeploymentInstrument{} was selected for the merged dataset
+    \item \textbf{Overlap with Next Deployment (\displayprojectname{} \nextcasenumber{}):} \HasNextDeploymentOverlap{}
 \end{itemize}
 
-This chapter details the preprocessing, quality control, 
-and analysis steps for the deep temperature and salinity (T/S) data from \projectname{} \casenumber{} moorings.
-
 \section{Pre-Processing}
-Detailed steps undertaken during the pre-processing of \projectname{} \casenumber{} data include:
+Detailed steps undertaken during the pre-processing of \displayprojectname{} \casenumber{} data include:
 
 \subsection{Data Loading and Initial Processing}
 \begin{itemize}
@@ -45,42 +49,42 @@ Detailed steps undertaken during the pre-processing of \projectname{} \casenumbe
 \item Adjust time data to account for MATLAB's year zero issue.
 \item Convert time units to 'days since 0001-01-01'.
 \item Subtract 365 days from converted times to correct for MATLAB's leap year assumption.
-\item Time base Interpolation (if necessary): Data are interpolated from the initial timing mark to the final timing mark, 
+\item Time-base interpolation (if necessary): Data are interpolated from the initial timing mark to the final timing mark, 
 so this needs to be done before truncation.
 \end{itemize}
 
-Potential timing errors are addressed by referring to the "recover.xls" spreadsheet on buoy5, 
+Potential timing errors are addressed by referring to the "recover.xls" spreadsheet on the UOP server, 
 under the "subsurface" tab, to compare spike start and end times with the apparent time in the instrument data. 
-If the offset is greater than one sample interval (+/- 5 min for STRATUS deployments), 
-it indicates misalignment in time, and the data is linearly interpolated to a new time base to synchronize instruments.
+If the offset is greater than one sample interval (+/- 30 minutes for the Stratus 12 deployment),
+it indicates misalignment in time, and the data are linearly interpolated to a new time base to synchronize instruments.
 
-In reviewing the temperature data against recorded spike times for \projectname{} \casenumber{}, it is observed
-that the differences are consistently within 5 minutes. Specifically, for the deployment phase,
+In reviewing the temperature data against recorded spike times for \displayprojectname{} \casenumber{}, it is observed
+that the differences are consistently within 30 minutes for the Stratus 12 deployment. Specifically, for the deployment phase,
 the significant temperature drop commences at \DeploymentSpike{}, closely aligning with
 the recorded spike time of \DeploymentRecordedSpike{}. 
 Similarly, during the recovery phase, a notable temperature drop starts at \RecoverySpike{}, 
 which slightly follows the recorded spike time of \RecoveryRecordedSpike{}.
 
 \textbf{Time Correction Decision:} Based on these findings, 
-interpolation was not performed for \projectname{} \casenumber{} as the temperature data 
+interpolation was not performed for \displayprojectname{} \casenumber{} as the temperature data 
 aligns well with the recorded times, suggesting minimal time offset.
-See Figs.\ref{fig:str12_spikes_first} and \ref{fig:str12_spikes_second} for details.
+See Figs.~\ref{fig:str12_spikes_first} and \ref{fig:str12_spikes_second} for details.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.8\textwidth]{\projectname\casenumber_\FirstInstrument_spikes.png}
-\caption{Deployment and recovery spike times for instrument \FirstInstrumentType{} \FirstInstrument{} of \projectname{} \casenumber{} showing temperature changes during deployment and recovery operations. The vertical dashed lines indicate the recorded spike times (\DeploymentRecordedSpike{} for deployment and \RecoveryRecordedSpike{} for recovery).}
+\caption{Deployment and recovery spike times for instrument \FirstInstrumentType{} \FirstInstrument{} of \displayprojectname{} \casenumber{} showing temperature changes during deployment and recovery operations. The vertical dashed lines indicate the recorded spike times (\DeploymentRecordedSpike{} for deployment and \RecoveryRecordedSpike{} for recovery).}
 \label{fig:str12_spikes_first}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.8\textwidth]{\projectname\casenumber_\SecondInstrument_spikes.png}
-\caption{Deployment and recovery spike times for instrument \FirstInstrumentType{} \SecondInstrument{} of \projectname{} \casenumber{} showing temperature changes during deployment and recovery operations. The vertical dashed lines indicate the recorded spike times (\DeploymentRecordedSpike{} for deployment and \RecoveryRecordedSpike{} for recovery).}
+\caption{Deployment and recovery spike times for instrument \SecondInstrumentType{} \SecondInstrument{} of \displayprojectname{} \casenumber{} showing temperature changes during deployment and recovery operations. The vertical dashed lines indicate the recorded spike times (\DeploymentRecordedSpike{} for deployment and \RecoveryRecordedSpike{} for recovery).}
 \label{fig:str12_spikes_second}
 \end{figure}
 
-The deployment and recovery phases are visualized in Figs.\ref{fig:str12_deployment_recovery} and \ref{fig:str12_deployment_recovery_second}.
+The deployment and recovery phases are visualized in Figs.~\ref{fig:str12_deployment_recovery} and \ref{fig:str12_deployment_recovery_second}.
 The figures show the temperature changes during deployment and recovery operations for both instruments.
 The vertical dashed lines indicate the anchor over time (anchor dropped) and release fired times (mooring released),
 which are used to truncate the data.
@@ -88,14 +92,14 @@ which are used to truncate the data.
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.8\textwidth]{\projectname\casenumber_\FirstInstrument_deployment_recovery.png}
-\caption{Detailed view of temperature changes during deployment and recovery phases for instrument \FirstInstrumentType{} \FirstInstrument{} of \projectname{} \casenumber{}.}
+\caption{Detailed view of temperature changes during deployment and recovery phases for instrument \FirstInstrumentType{} \FirstInstrument{} of \displayprojectname{} \casenumber{}.}
 \label{fig:str12_deployment_recovery}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.8\textwidth]{\projectname\casenumber_\SecondInstrument_deployment_recovery.png}
-\caption{Detailed view of temperature changes during recovery phases for instrument \FirstInstrumentType{} \SecondInstrument{} of \projectname{} \casenumber{}.}
+\caption{Detailed view of temperature changes during recovery phases for instrument \SecondInstrumentType{} \SecondInstrument{} of \displayprojectname{} \casenumber{}.}
 \label{fig:str12_deployment_recovery_second}
 \end{figure}
 
@@ -111,20 +115,20 @@ which are used to truncate the data.
 These define the "baseline" files for each deployment, before quality control but after time correction and truncation. 
 \end{itemize}
 
-The truncated data (Fig.\ref{fig:str12_instrument_comparison}) shows the expected time window of good data after truncation, 
+The truncated data (Fig.~\ref{fig:str12_instrument_comparison}) shows the expected time window of good data after truncation, 
 starting 4 hours after anchor deployment time and ending at the release fired time.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.8\textwidth]{\projectname\casenumber_\FirstInstrument_vs_\SecondInstrument_comparison.png}
-    \caption{Deployment and recovery timing analysis for \projectname{} \casenumber{}, comparing instruments \FirstInstrumentType{} \FirstInstrument{} and \FirstInstrumentType{} \SecondInstrument{}. This figure shows the expected time window of good data after truncation, starting 4 hours after anchor deployment time and ending at the release fired time.\pressurenote}
+    \caption{Deployment and recovery timing analysis for \displayprojectname{} \casenumber{}, comparing instruments \FirstInstrumentType{} \FirstInstrument{} and \SecondInstrumentType{} \SecondInstrument{}. This figure shows the expected time window of good data after truncation, starting 4 hours after anchor deployment time and ending at the release fired time.\pressurenote}
     \label{fig:str12_instrument_comparison}
 \end{figure}
 
-\subsection{Re-calculate Salinity}
+\subsection{Recalculate Salinity}
 
 Pressure data is not available for this deployment, therefore we recalculate salinity using a fixed pressure value based on the instrument depth.
-For \projectname{} \casenumber{}, salinity was recalculated using the following procedure:
+For \displayprojectname{} \casenumber{}, salinity was recalculated using the following procedure:
 
 \begin{enumerate}
     \item \textbf{Pressure Calculation:} Instead of using the potentially drifting pressure sensor data, we calculate a fixed pressure value based on instrument depth:
@@ -137,7 +141,7 @@ For \projectname{} \casenumber{}, salinity was recalculated using the following 
     \item \textbf{Practical Salinity Calculation:}
     \begin{itemize}
         \item Convert conductivity from S/m to mS/cm by multiplying with a factor of 10
-        \item Apply the TEOS-10 (Thermodynamic Equation Of Seawater - 2010) algorithm via \texttt{gsw.SP\_from\_C}
+        \item Apply the TEOS-10 (Thermodynamic Equation of Seawater 2010) algorithm via \texttt{gsw.SP\_from\_C}
         \item Use measured temperature and the calculated fixed pressure (rather than varying measured pressure)
         \item Store the computed values as \texttt{sea\_water\_practical\_salinity} with units 'psu'
     \end{itemize}
@@ -166,7 +170,7 @@ Using a fixed pressure calculated from the known instrument depth produces more 
 \item Fill missing data or create non-existent variables with -99999 values and encode them as missing values.
 \item Carry forward time series for all five variables even if not present, by setting missing values to -99999.
 \item Save the time-corrected, truncated datasets as NetCDF files for further processing.
-\item Files are saved in the directory \texttt{/data/truncated/\projectname\casenumber}.
+\item Output files: NetCDF files.
 \end{itemize}
 
 \section{Quality Control and Deployment Catalog}
@@ -177,12 +181,14 @@ Spike detection and removal are set up in function \texttt{src/qc\_function.py}.
 The spike removal function identifies and removes spikes from time series data using a rolling mean and standard deviation. 
 It calculates these statistics within a specified window size around each data point. 
 Points that deviate from the rolling mean by more than \ThresholdValue{} times the standard deviation are considered spikes and replaced with missing values (-99999). 
-For \projectname{} \casenumber{} processing, the window size was \WindowSize{} points and the threshold was \ThresholdValue{} times the standard deviation.
-See Figs.\ref{fig:str12_first_instrument} and \ref{fig:str12_second_instrument} for examples of the original and cleaned plots.
+For \displayprojectname{} \casenumber{} processing, the window size was \WindowSize{} points and the threshold was \ThresholdValue{} times the standard deviation.
+See Figs.~\ref{fig:str12_first_instrument} and \ref{fig:str12_second_instrument} for examples of the original and cleaned plots.
 
 The spikes removed from the datasets are shown in the table below.
 
 \input{12/spike_stats.tex}
+
+\textbf{Note:} NaN values in the \texttt{sea\_water\_pressure} row of the spike-removal table indicate that pressure data are not available for this deployment, so spike screening on pressure was not performed.
 
 \subsection{Difference Statistics}
 When both instruments are available and functional, 
@@ -201,23 +207,23 @@ The difference statistics are shown in the tables below.
 \item \texttt{mean\_sensor\_diff}: Mean of the difference between two co-located sensors
 \end{itemize}
 
-\textbf{Important:} NaN values that exist in the difference statistics may be due to the conversion process from the original MAT files and do not necessarily indicate data quality issues. The statistics are computed after excluding any NaN values to ensure accuracy.
+\textbf{Note:} NaN values in the \texttt{sea\_water\_pressure} rows of the difference statistics tables indicate that pressure data were not available for this deployment, so per-sensor pressure statistics and the paired-sensor pressure difference could not be computed. NaN values in the remaining rows, if any, are excluded from the reported statistics and do not indicate data quality issues.
 
-\subsection{Human in the Loop (HITL) Quality Control}
-A catalog of results for each deployment was created, featuring original and QC plots for all measured variables. 
-See Figs.\ref{fig:str12_first_instrument} and \ref{fig:str12_second_instrument} for examples.
+\subsection{Human-in-the-loop (HITL) Quality Control}
+A catalog of results for each deployment was created, featuring original and quality-control plots for all measured variables. 
+See Figs.~\ref{fig:str12_first_instrument} and \ref{fig:str12_second_instrument} for examples.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.8\textwidth]{\projectname\casenumber_\FirstInstrument_hitl_catalog.png}
-    \caption{Original and clean plots of temperature, salinity, absolute salinity, conductivity, and pressure for instrument \FirstInstrumentType{} \FirstInstrument{} of \projectname{} \casenumber{}.}
+    \caption{Original and cleaned plots of temperature, salinity, absolute salinity, conductivity, and pressure for instrument \FirstInstrumentType{} \FirstInstrument{} of \displayprojectname{} \casenumber{}.}
     \label{fig:str12_first_instrument}
 \end{figure}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.8\textwidth]{\projectname\casenumber_\SecondInstrument_hitl_catalog.png}
-    \caption{Original and clean plots of temperature, salinity, absolute salinity, conductivity, and pressure for instrument \FirstInstrumentType{} \SecondInstrument{} of \projectname{} \casenumber{}.}
+    \caption{Original and cleaned plots of temperature, salinity, absolute salinity, conductivity, and pressure for instrument \SecondInstrumentType{} \SecondInstrument{} of \displayprojectname{} \casenumber{}.}
     \label{fig:str12_second_instrument}
 \end{figure}
 
@@ -225,17 +231,17 @@ See Figs.\ref{fig:str12_first_instrument} and \ref{fig:str12_second_instrument} 
 
 \begin{itemize}
 \item Export the cleaned datasets as NetCDF files for further processing.
-\item Files are saved in the directory \texttt{/data/cleaned/\projectname\casenumber}.
+\item Output files: NetCDF files.
 \item Each file contains sea\_water\_temperature, sea\_water\_electrical\_conductivity, sea\_water\_practical\_salinity, sea\_water\_absolute\_salinity, and sea\_water\_pressure.
 \end{itemize}   
 
 \section{Documentation and Archiving}
-Finalized data sets are documented extensively and prepared for inclusion on the project website. 
-The metadata is updated to be compliant with the NetCDF Climate and Forecast (CF) conventions, and OceanSITES data manual.
+Finalized datasets are documented extensively and prepared for inclusion on the project website. 
+The metadata are updated to comply with the NetCDF Climate and Forecast (CF) conventions and the OceanSITES data manual.
 
 \section{Conclusion}
 This chapter documents the preprocessing, quality control, and analysis steps 
-for the deep temperature and salinity data from \projectname{} \casenumber{}. 
+for the deep temperature and salinity data from \displayprojectname{} \casenumber{}. 
 The resulting cleaned and merged dataset provides a valuable record of deep ocean temperature and salinity 
-at the \projectname{} site, contributing to long-term climate monitoring efforts. As the first dataset in this 
+at the \displayprojectname{} site, contributing to long-term climate monitoring efforts. As the first dataset in this 
 processing sequence, it establishes the baseline for future deployments.

@@ -50,11 +50,11 @@ This report documents the missing-data handling workflow for \projectname{} \cas
 \begin{itemize}
 	\item Fill missing data or create non-existent variables with -99999 values and encode them as missing values.
 	\item Carry forward time series for all five variables even if not present, by setting missing values to -99999.
-	\item Files are saved in the directory \texttt{/data/truncated/NTAS15} as
+	\item Output files:
 	\texttt{NTAS15\_\FirstInstrument\_truncated.nc} and \texttt{NTAS15\_\SecondInstrument\_truncated.nc}.
 \end{itemize}
 
-\section{Merged Data Set}
+\section{Merged Dataset}
 \subsection{Metadata and Selection Strategy}
 All necessary metadata are incorporated from individual deployments and retained in the merged file.
 

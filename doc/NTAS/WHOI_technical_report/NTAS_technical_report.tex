@@ -56,11 +56,10 @@
 }
 
 \author{
-    Yu Gao\\
-    Upper Ocean Processes Group\\
+    Yu Gao, Albert Plueddemann, Robert A. Weller, Sebastien Bigorre\\
     Woods Hole Oceanographic Institution\\
-    Woods Hole, MA 02543\\
-    \texttt{yugao@whoi.edu}
+    266 Woods Hole Road, Woods Hole, MA 02543-1050\\
+    Corresponding Author: Yu Gao (\texttt{yu.gao@whoi.edu})
 }
 
 \date{\today}
@@ -70,14 +69,15 @@
 \maketitle
 
 \begin{abstract}
-This technical report documents deep-ocean temperature and salinity records from the Northwest Tropical Atlantic Station (NTAS) for ten consecutive deployments (NTAS 11 through NTAS 20, 2011 to 2022). During each deployment, paired Sea-Bird Scientific recorders (SBE16 or SBE37) were mounted near the seafloor to support sustained deep-ocean observations.
+This report documents the processing and quality control of deep temperature and salinity observations collected at the Northwest Tropical Atlantic Station (NTAS) Ocean Reference Station during NTAS deployments 11 through 20 (2011-2022). The measurements were made by paired Sea-Bird Scientific instruments mounted near the bottom of each surface mooring, nominally about 39 m above the seafloor in approximately 5118 m water depth.
 
-The report focuses on methods and product quality: time-base verification, deployment/recovery trimming, spike detection, paired-sensor consistency checks, and metadata standardization to OceanSITES and CF conventions. Temperature is the primary mature product in this release, with deployment-by-deployment error statistics from paired instruments. Salinity variables are provided as processed products derived with TEOS-10 from conductivity, temperature, and depth-based pressure, and should be interpreted with deployment-specific caution where conductivity behavior is less stable.
+The report is intended as a technical record of the data product. It describes the source files, deployment and recovery trimming, time-base checks, salinity recalculation, spike screening, human-in-the-loop review, sensor-to-sensor comparison statistics, and the construction of merged time series across successive deployments. It also summarizes deployment-specific exceptions, including failed or missing records, non-overlapping deployment intervals, and cases where pressure was unavailable or unsuitable for analysis.
 
-This volume serves as a reproducible processing record and deployment catalog for users who need traceable quality-control decisions, consistent file structure, and uncertainty context for deep-ocean climate analyses.
+The resulting NetCDF files follow CF and OceanSITES conventions and provide a traceable deep-ocean temperature record, with salinity and conductivity variables retained where supported by the processed data. The material presented here is intended to support archival use, reproducibility of the processing decisions, and interpretation of the NTAS deep-ocean time series by WHOI and external users.
 \end{abstract}
 
 \setcounter{tocdepth}{1}
+
 
 \tableofcontents
 

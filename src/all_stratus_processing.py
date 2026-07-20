@@ -12,10 +12,14 @@ import cftime
 import pandas as pd
 import re
 import glob
+import argparse
 
 # %%
 # Configuration: specify the deployment config file
-config_file = 'stratus22_config.json'  # Edit this path as needed
+parser = argparse.ArgumentParser(description='Process one Stratus deployment config')
+parser.add_argument('--config', default='stratus22_config.json', help='Path to deployment config JSON')
+args, _ = parser.parse_known_args()
+config_file = args.config
 data_path = '/Users/yugao/UOP/ORS-processing/data/processed'
 version = 'v1'  # Specify version'
 
@@ -28,6 +32,52 @@ from netcdf_sbe37 import read_mat_file
 from util import create_xarray_dataset, process_attributes_direct, fill_or_create_variables
 import gsw  # Add this import for TEOS-10 calculations
 from plot_function import plot_spike_data, plot_deployment_recovery
+
+
+def select_time_window_with_fallback(ds, center_start, center_end, base_buffer_hours=2, label="window"):
+    """Return a non-empty time slice whenever possible using safe fallback strategies."""
+    if center_start is None:
+        return ds.isel(time=slice(0, 0)), center_start, center_end, f"{label}:missing"
+
+    center_start = pd.to_datetime(center_start).replace(tzinfo=None)
+    center_end = pd.to_datetime(center_end).replace(tzinfo=None) if center_end is not None else center_start
+    buffer = pd.Timedelta(hours=base_buffer_hours)
+
+    candidates = [
+        ("configured", center_start, center_end),
+        ("configured_minus_365d", center_start - pd.Timedelta(days=365), center_end - pd.Timedelta(days=365)),
+        ("configured_plus_365d", center_start + pd.Timedelta(days=365), center_end + pd.Timedelta(days=365)),
+    ]
+
+    for mode, start_t, end_t in candidates:
+        window = ds.sel(time=slice(start_t - buffer, end_t + buffer))
+        if len(window.time) > 0:
+            return window, start_t, end_t, f"{label}:{mode}"
+
+    def _to_naive_time(value):
+        if isinstance(value, np.datetime64):
+            return pd.Timestamp(value).to_pydatetime().replace(tzinfo=None)
+        if hasattr(value, 'isoformat'):
+            return pd.to_datetime(value.isoformat()).to_pydatetime().replace(tzinfo=None)
+        return pd.to_datetime(value).to_pydatetime().replace(tzinfo=None)
+
+    if len(ds.time) > 0:
+        tmin = _to_naive_time(ds.time.values[0])
+        tmax = _to_naive_time(ds.time.values[-1])
+        edge_buffer = pd.Timedelta(hours=4)
+
+        if abs((center_start - tmin).total_seconds()) <= abs((center_start - tmax).total_seconds()):
+            start_t = tmin
+            end_t = min(tmin + pd.Timedelta(hours=8), tmax)
+            window = ds.sel(time=slice(start_t - edge_buffer, end_t + edge_buffer))
+            return window, start_t, end_t, f"{label}:edge_start"
+
+        start_t = max(tmax - pd.Timedelta(hours=8), tmin)
+        end_t = tmax
+        window = ds.sel(time=slice(start_t - edge_buffer, end_t + edge_buffer))
+        return window, start_t, end_t, f"{label}:edge_end"
+
+    return ds.isel(time=slice(0, 0)), center_start, center_end, f"{label}:empty_dataset"
 
 
 # %%
@@ -522,30 +572,35 @@ if len(processed_datasets) >= 2:
         else:
             print(f"No recovery spike times available - will only plot deployment spikes")
         
-        # Add buffer 
-        buffer = pd.Timedelta(hours=2)
-        
         # Process first instrument
-        ds1_deployment_spike = ds1.sel(time=slice(deployment_start - buffer, deployment_end + buffer))
+        ds1_deployment_spike, dep_start_1, dep_end_1, dep_mode_1 = select_time_window_with_fallback(
+            ds1, deployment_start, deployment_end, base_buffer_hours=2, label='deployment_spike_ds1'
+        )
+        if dep_mode_1 != 'deployment_spike_ds1:configured':
+            print(f"WARNING: fallback used for SN {sn1} deployment spike window: {dep_mode_1}")
         
         # Always use consistent lowercase naming
         spike_img_path1 = os.path.join(img_path, f"{case_name.lower()}_{sn1}_spikes.png")
         
         # Plot first instrument data
         if recovery_start is not None:
-            ds1_recovery_spike = ds1.sel(time=slice(recovery_start - buffer, recovery_end + buffer))
+            ds1_recovery_spike, rec_start_1, rec_end_1, rec_mode_1 = select_time_window_with_fallback(
+                ds1, recovery_start, recovery_end, base_buffer_hours=2, label='recovery_spike_ds1'
+            )
+            if rec_mode_1 != 'recovery_spike_ds1:configured':
+                print(f"WARNING: fallback used for SN {sn1} recovery spike window: {rec_mode_1}")
             plot_spike_data(ds1_deployment_spike, ds1_recovery_spike, case_name.lower(), spike_img_path1,
-                            deployment_spike_start=deployment_start, 
-                            deployment_spike_end=deployment_end, 
-                            recovery_spike_start=recovery_start,
-                            recovery_spike_end=recovery_end,
+                            deployment_spike_start=dep_start_1,
+                            deployment_spike_end=dep_end_1,
+                            recovery_spike_start=rec_start_1,
+                            recovery_spike_end=rec_end_1,
                             start_label="Spike starts", 
                             end_label="Spike ends")
         else:
             # No recovery data
             plot_spike_data(ds1_deployment_spike, None, case_name.lower(), spike_img_path1,
-                            deployment_spike_start=deployment_start, 
-                            deployment_spike_end=deployment_end,
+                            deployment_spike_start=dep_start_1,
+                            deployment_spike_end=dep_end_1,
                             recovery_spike_start=None,
                             recovery_spike_end=None, 
                             start_label="Spike starts", 
@@ -553,25 +608,33 @@ if len(processed_datasets) >= 2:
         print(f"Spike plot saved as {spike_img_path1}")
         
         # Process second instrument (similar approach)
-        ds2_deployment_spike = ds2.sel(time=slice(deployment_start - buffer, deployment_end + buffer))
+        ds2_deployment_spike, dep_start_2, dep_end_2, dep_mode_2 = select_time_window_with_fallback(
+            ds2, deployment_start, deployment_end, base_buffer_hours=2, label='deployment_spike_ds2'
+        )
+        if dep_mode_2 != 'deployment_spike_ds2:configured':
+            print(f"WARNING: fallback used for SN {sn2} deployment spike window: {dep_mode_2}")
         
         # Use consistent lowercase naming for the second instrument too
         spike_img_path2 = os.path.join(img_path, f"{case_name.lower()}_{sn2}_spikes.png")
         
         if recovery_start is not None:
-            ds2_recovery_spike = ds2.sel(time=slice(recovery_start - buffer, recovery_end + buffer))
+            ds2_recovery_spike, rec_start_2, rec_end_2, rec_mode_2 = select_time_window_with_fallback(
+                ds2, recovery_start, recovery_end, base_buffer_hours=2, label='recovery_spike_ds2'
+            )
+            if rec_mode_2 != 'recovery_spike_ds2:configured':
+                print(f"WARNING: fallback used for SN {sn2} recovery spike window: {rec_mode_2}")
             plot_spike_data(ds2_deployment_spike, ds2_recovery_spike, case_name.lower(), spike_img_path2,
-                            deployment_spike_start=deployment_start, 
-                            deployment_spike_end=deployment_end, 
-                            recovery_spike_start=recovery_start,
-                            recovery_spike_end=recovery_end,
+                            deployment_spike_start=dep_start_2,
+                            deployment_spike_end=dep_end_2,
+                            recovery_spike_start=rec_start_2,
+                            recovery_spike_end=rec_end_2,
                             start_label="Spike starts", 
                             end_label="Spike ends")
         else:
             # No recovery data
             plot_spike_data(ds2_deployment_spike, None, case_name.lower(), spike_img_path2,
-                            deployment_spike_start=deployment_start, 
-                            deployment_spike_end=deployment_end,
+                            deployment_spike_start=dep_start_2,
+                            deployment_spike_end=dep_end_2,
                             recovery_spike_start=None,
                             recovery_spike_end=None, 
                             start_label="Spike starts", 
@@ -586,31 +649,43 @@ if len(processed_datasets) >= 2:
     # 2. Create deployment/recovery phase plots for each instrument
     try:
         # Process first instrument deployment/recovery phases
-        ds1_deploy_phase = ds1.sel(time=slice(anchor_over_time1 - pd.Timedelta(hours=4), 
-                                           anchor_over_time1 + pd.Timedelta(hours=4)))
-        ds1_recovery_phase = ds1.sel(time=slice(release_fired_time1 - pd.Timedelta(hours=4), 
-                                             release_fired_time1 + pd.Timedelta(hours=4)))
+        ds1_deploy_phase, dep_phase_t1, _, dep_phase_mode1 = select_time_window_with_fallback(
+            ds1, anchor_over_time1, anchor_over_time1, base_buffer_hours=4, label='deployment_phase_ds1'
+        )
+        ds1_recovery_phase, rec_phase_t1, _, rec_phase_mode1 = select_time_window_with_fallback(
+            ds1, release_fired_time1, release_fired_time1, base_buffer_hours=4, label='recovery_phase_ds1'
+        )
+        if dep_phase_mode1 != 'deployment_phase_ds1:configured':
+            print(f"WARNING: fallback used for SN {sn1} deployment phase window: {dep_phase_mode1}")
+        if rec_phase_mode1 != 'recovery_phase_ds1:configured':
+            print(f"WARNING: fallback used for SN {sn1} recovery phase window: {rec_phase_mode1}")
         
         # Plot first instrument deployment/recovery phases
         phase_img_path1 = os.path.join(img_path, f"{case_name}_{sn1}_deployment_recovery.png")
         plot_deployment_recovery(ds1_deploy_phase, ds1_recovery_phase, case_name, phase_img_path1,
-                                deployment_time=anchor_over_time1, 
-                                recovery_time=release_fired_time1,
+                                deployment_time=dep_phase_t1,
+                                recovery_time=rec_phase_t1,
                                 deployment_label="Anchor dropped", 
                                 recovery_label="Mooring released")
         print(f"Deployment and recovery phase plot saved as {phase_img_path1}")
         
         # Process second instrument deployment/recovery phases
-        ds2_deploy_phase = ds2.sel(time=slice(anchor_over_time2 - pd.Timedelta(hours=4), 
-                                    anchor_over_time2 + pd.Timedelta(hours=4)))
-        ds2_recovery_phase = ds2.sel(time=slice(release_fired_time2 - pd.Timedelta(hours=4), 
-                                    release_fired_time2 + pd.Timedelta(hours=4)))
+        ds2_deploy_phase, dep_phase_t2, _, dep_phase_mode2 = select_time_window_with_fallback(
+            ds2, anchor_over_time2, anchor_over_time2, base_buffer_hours=4, label='deployment_phase_ds2'
+        )
+        ds2_recovery_phase, rec_phase_t2, _, rec_phase_mode2 = select_time_window_with_fallback(
+            ds2, release_fired_time2, release_fired_time2, base_buffer_hours=4, label='recovery_phase_ds2'
+        )
+        if dep_phase_mode2 != 'deployment_phase_ds2:configured':
+            print(f"WARNING: fallback used for SN {sn2} deployment phase window: {dep_phase_mode2}")
+        if rec_phase_mode2 != 'recovery_phase_ds2:configured':
+            print(f"WARNING: fallback used for SN {sn2} recovery phase window: {rec_phase_mode2}")
         
         # Plot second instrument deployment/recovery phases
         phase_img_path2 = os.path.join(img_path, f"{case_name}_{sn2}_deployment_recovery.png")
         plot_deployment_recovery(ds2_deploy_phase, ds2_recovery_phase, case_name, phase_img_path2,
-                                deployment_time=anchor_over_time2, 
-                                recovery_time=release_fired_time2,
+                                deployment_time=dep_phase_t2,
+                                recovery_time=rec_phase_t2,
                                 deployment_label="Anchor dropped", 
                                 recovery_label="Mooring released")
         print(f"Deployment and recovery phase plot saved as {phase_img_path2}")

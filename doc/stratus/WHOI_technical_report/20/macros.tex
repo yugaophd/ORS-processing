@@ -1,19 +1,19 @@
 \renewcommand{\projectname}{stratus}  % Default project name
-\renewcommand{\displayprojectname}{STRATUS}
+\renewcommand{\displayprojectname}{Stratus}
 \renewcommand{\caseyear}{2022}  % Updated year for Stratus 20
 \renewcommand{\casenumber}{20}  % Updated to Stratus 20
 \renewcommand{\previouscasenumber}{19}  % Previous case number (was Stratus 19)
 \renewcommand{\imagepath}{/Users/yugao/UOP/ORS-processing/img}  % Path to images
-\renewcommand{\HasNextDeploymentOverlap}{yes}  % No overlap between datasets
+\renewcommand{\HasNextDeploymentOverlap}{yes}  % Overlap detected between deployments
 \renewcommand{\FirstInstrumentType}{SBE37}  % Type of first instrument
 \renewcommand{\SecondInstrumentType}{SBE37}  % Type of second instrument
-\renewcommand{\DeploymentSpike}{01/25/2022 12:00} % Approximate - update with actual time
-\renewcommand{\DeploymentRecordedSpike}{01/25/2022 12:00}  % Same as above - update with actual time
-\renewcommand{\RecoverySpike}{2023/03/02 16:06} % From config file
-\renewcommand{\RecoveryRecordedSpike}{2023/03/02 16:06} % From config file
+\renewcommand{\DeploymentSpike}{not recorded} % No deployment spike start/end recorded in mooring log; deployment_spike_times are null in stratus20_config.json (instruments were powered on well before mooring deployment on 2022-04-03)
+\renewcommand{\DeploymentRecordedSpike}{not recorded}  % No deployment spike start/end recorded in mooring log
+\renewcommand{\RecoverySpike}{2023-03-02 16:06} % Matches stratus20_config.json recovery_spike_times.start
+\renewcommand{\RecoveryRecordedSpike}{2023-03-02 16:06} % Same as above
 \renewcommand{\FirstInstrument}{10600} % First instrument from config, chosen for merge
 \renewcommand{\SecondInstrument}{10601} % Second instrument from config
-\renewcommand{\PreviousDeploymentInstrument}{\FirstInstrumentType{} 11394}  % Instrument from Stratus 19
+\renewcommand{\PreviousDeploymentInstrument}{\FirstInstrumentType{} 11379}  % Instrument from Stratus 19
 \renewcommand{\CurrentDeploymentInstrument}{\FirstInstrumentType{} \FirstInstrument}  % Instrument 10600 chosen from Stratus 20
 \renewcommand{\pressureavailable}{yes}  % Assume pressure data is available
 \renewcommand{\pressurenote}{}

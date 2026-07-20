@@ -27,6 +27,7 @@ instrument1_2 = '1877'
 project_name = 'NTAS'
 project_number = '12'
 doc = f'/Users/yugao/UOP/ORS-processing/doc/{project_name}/{project_number}'
+img = '/Users/yugao/UOP/ORS-processing/img'
 
 print(f'Examining overlap between {case_name0} and {case_name1}')
 
@@ -61,21 +62,25 @@ sel1_2 = ds1_instrument2.sel(time=slice(extended_start, extended_end))[variable]
 # Determine overlap window and extend by 2 hours
 variable = 'sea_water_temperature'  # Specify variable to compare
 
-overlap_start = max(ds0_instrument1.time.min(), ds1_instrument2.time.min(), ds1_instrument1.time.min())
-overlap_end = min(ds0_instrument1.time.max(), ds1_instrument2.time.max(), ds1_instrument1.time.max())
+overlap_start = max(ds0_instrument2.time.min(), ds1_instrument1.time.min())
+overlap_end = min(ds0_instrument2.time.max(), ds1_instrument1.time.max())
 
 
-if overlap_start >= overlap_end:
-    print('No overlap between the two datasets. Exiting...')
-    # extend the time window by 24 hours
+has_overlap = overlap_start < overlap_end
+if not has_overlap:
+    print('No overlap between the two datasets. Will plot junction window instead.')
+    # Center plotting window around the junction between the two deployments
+    junction = pd.Timestamp(ds0_instrument2.time.max().values)
+    extended_start = junction - pd.Timedelta(hours=120)
+    extended_end = pd.Timestamp(ds1_instrument1.time.min().values) + pd.Timedelta(hours=120)
 else:
     print(f'Overlap between {case_name0} and {case_name1} from {overlap_start} to {overlap_end}')
+    extended_start = overlap_start - pd.Timedelta(hours=120)
+    extended_end = overlap_end + pd.Timedelta(hours=120)
 
 
 # %%
 # Plotting
-extended_start = overlap_start - pd.Timedelta(hours=120)
-extended_end = overlap_end + pd.Timedelta(hours=120)
 
 # Select data for plotting
 sel0_1 = ds0_instrument1.sel(time=slice(extended_start, extended_end))[variable]
@@ -100,7 +105,7 @@ ax1.grid(True)  # Optionally add grid for better readability
 
 # Save the figure
 plt.tight_layout()  # Adjust subplots to fit into figure area nicely
-plt.savefig(f'{doc}/overlap_{case_name0}_and_{case_name1}.png')
+plt.savefig(f'{img}/overlap_{case_name0}_and_{case_name1}.png')
 
 # %%
 ds0_merge = ds0_instrument2
@@ -116,8 +121,8 @@ merged_dataset = merged_dataset.sortby("time")
 # %%
 # Data source is the second dataset
 ds_source = ds1_merge
-ds0_merge.attrs['platform_anchor_over_time'] = f'missing'
-ds0_merge.attrs['platform_buoy_recovery_time'] = f'missing'
+ds0_merge.attrs['platform_anchor_over_time'] = '2011-11-25T17:55:00Z'
+ds0_merge.attrs['platform_buoy_recovery_time'] = '2012-12-04T11:25:00Z'
 
 # Copy attributes from the first dataset and prepare to modify them
 merged_dataset.attrs = ds0_merge.attrs.copy()
@@ -126,7 +131,7 @@ merged_dataset.attrs = ds0_merge.attrs.copy()
 # attribute merging point
 # If there is no overlap, 
 # define the "merge point" as the starting time of the subsequent deployment.
-if overlap_end < overlap_start: # No overlap found
+if not has_overlap: # No overlap found
     first_merge_time = pd.to_datetime(ds0_merge.time[0].values).strftime('%Y-%m-%dT%H:%M:%SZ')
     merge_point = pd.to_datetime(ds1_merge.time[0].values).strftime('%Y-%m-%dT%H:%M:%SZ')
     merged_dataset.attrs['merge_point'] = f'{first_merge_time}, {merge_point}'

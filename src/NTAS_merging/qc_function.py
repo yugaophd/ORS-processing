@@ -165,6 +165,31 @@ def create_hitl_catalog(original_ds, qc_ds, deployment_id, instrument_number, ou
     
     fig, axs = plt.subplots(5, 1, figsize=(15, 25))
     # fig.suptitle(f"Deployment {title_name}: Original vs QC Data", fontsize=16)
+
+    def _valid_numeric_values(da):
+        vals = np.asarray(da.values, dtype=float)
+        vals = vals[np.isfinite(vals)]
+        vals = vals[vals != -99999.0]
+        return vals
+
+    def _apply_robust_ylim(ax, original_da, qc_da):
+        combined = np.concatenate([_valid_numeric_values(original_da), _valid_numeric_values(qc_da)])
+        if combined.size < 20:
+            return
+
+        lo = np.nanpercentile(combined, 1)
+        hi = np.nanpercentile(combined, 99)
+        robust_span = hi - lo
+        full_lo = np.nanmin(combined)
+        full_hi = np.nanmax(combined)
+        full_span = full_hi - full_lo
+
+        if not np.isfinite(robust_span) or robust_span <= 0:
+            return
+
+        if np.isfinite(full_span) and full_span > 8 * robust_span:
+            pad = robust_span * 0.08
+            ax.set_ylim(lo - pad, hi + pad)
     
     for i, var in enumerate(variables):
         # Plot original data
@@ -172,6 +197,8 @@ def create_hitl_catalog(original_ds, qc_ds, deployment_id, instrument_number, ou
         
         # Plot QC data
         qc_ds[var].plot(ax=axs[i], label='QC', alpha=0.7)
+
+        _apply_robust_ylim(axs[i], original_ds[var], qc_ds[var])
         
         # Highlight removed points
         mask = np.isnan(qc_ds[var]) & ~np.isnan(original_ds[var])

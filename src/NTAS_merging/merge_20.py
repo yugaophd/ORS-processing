@@ -255,8 +255,10 @@ merged_dataset.attrs['wmo_platform_code'] = '48401'
 
 # Add funding acknowledgment
 merged_dataset.attrs['acknowledgement'] = 'The NTAS project is supported by the National Oceanic and Atmospheric Administration (NOAA) Global Ocean Monitoring and Observing (GOMO) Program through the Cooperative Institute for the North Atlantic Region (CINAR) under Cooperative Agreement NA14OAR4320158. NOAA CPO FundRef number (100007298).'
-merged_dataset.attrs['platform_anchor_over_time'] = f'missing, 2012-12-03T21:24:00Z, 2013-10-22T22:58:00Z, 2014-12-13T18:27:00Z, 2017-01-30T20:31:00Z, 2018-06-10T20:53:00Z, 2020-01-10T17:45:00Z, 2020-10-22T19:03:00Z, 2021-11-12T18:57:00Z'
-merged_dataset.attrs['platform_buoy_recovery_time'] = f'missing, 2013-10-29T09:53:00Z, missing, 2016-02-04T14:08:00Z, 2018-06-12T12:27:00Z, 2020-01-16T10:41:00Z, 2020-10-24T12:14:00Z, 2021-11-13T14:22:00Z, 2022-10-15T15:17:00Z'
+merged_dataset.attrs['platform_anchor_over_time'] = '2011-11-25T17:55:00Z, 2012-12-03T21:24:00Z, 2013-10-22T22:58:00Z, 2014-12-13T18:27:00Z, 2017-01-30T20:31:00Z, 2018-06-10T20:53:00Z, 2020-01-10T17:45:00Z, 2020-10-22T19:03:00Z, 2021-11-12T18:57:00Z'
+merged_dataset.attrs['platform_buoy_recovery_time'] = '2012-12-04T11:25:00Z, 2013-10-29T09:53:00Z, 2014-12-15T12:00:00Z, 2016-02-04T14:08:00Z, 2018-06-12T12:27:00Z, 2020-01-16T10:41:00Z, 2020-10-24T12:14:00Z, 2021-11-13T14:22:00Z, 2022-10-15T15:17:00Z'
+merged_dataset.attrs['platform_buoy_recovery_time_comment'] = 'For NTAS 13, this value is the subsurface recovery/release time used for deep-instrument truncation because the surface buoy went adrift before recovery.'
+merged_dataset.attrs['instrument_model'] = 'SBE-16, SBE-16, SBE-16, SBE37, SBE37, SBE37, SBE37, SBE37, SBE37'
 
 # Save the merged dataset
 merged_dataset.to_netcdf(f'{merged_dir}/merged_NTAS11_to_{case_name1}.nc')

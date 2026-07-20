@@ -41,6 +41,36 @@ def safe_convert_dataset_times(ds):
         else:
             times.append(pd.to_datetime(t).to_pydatetime())
     return times
+
+
+def _should_plot_salinity(series):
+    """Return True when salinity values are present and not effectively all zeros."""
+    vals = np.asarray(series, dtype=float)
+    finite = np.isfinite(vals)
+    if not finite.any():
+        return False
+
+    finite_vals = vals[finite]
+    sal_range = np.nanmax(finite_vals) - np.nanmin(finite_vals)
+    sal_median_abs = np.nanmedian(np.abs(finite_vals))
+
+    # Some raw files contain near-zero placeholders that flatten the panel.
+    return not (sal_median_abs < 1e-3 and sal_range < 1e-3)
+
+
+def _format_spike_time(ts):
+    return ts.strftime('%Y-%m-%d %H:%M:%S')
+
+
+def _format_duration(delta):
+    total_seconds = int(max(0, delta.total_seconds()))
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    if hours == 0 and minutes == 0:
+        return f"Spike duration: {seconds}s"
+    if hours == 0:
+        return f"Spike duration: {minutes}m {seconds}s"
+    return f"Spike duration: {hours}h {minutes}m"
     
 def plot_spike_data(deployment_spike_data, 
                    recovery_spike_data, 
@@ -107,7 +137,7 @@ def plot_spike_data(deployment_spike_data,
                                 alpha=0.7)
                     
                     # Format timestamp for display
-                    time_str = deployment_spike_start_naive.strftime('%Y-%m-%d %H:%M')
+                    time_str = _format_spike_time(deployment_spike_start_naive)
                     
                     # Add start annotation with box (like in deployment_recovery)
                     y_pos = ax1.get_ylim()[0] + (ax1.get_ylim()[1] - ax1.get_ylim()[0]) * 0.6
@@ -120,8 +150,9 @@ def plot_spike_data(deployment_spike_data,
                         fontsize=10
                     )
                     
-                    # Only attempt to draw end line if end time is also provided
-                    if deployment_spike_end_naive is not None:
+                    # Draw an end marker whenever an end time is provided.
+                    has_deployment_interval = deployment_spike_end_naive is not None
+                    if has_deployment_interval:
                         # Draw end vertical line
                         ax1.axvline(x=deployment_spike_end_naive, 
                                     color='Red', 
@@ -129,7 +160,7 @@ def plot_spike_data(deployment_spike_data,
                                     alpha=0.7)
                         
                         # Format end timestamp
-                        end_time_str = deployment_spike_end_naive.strftime('%Y-%m-%d %H:%M')
+                        end_time_str = _format_spike_time(deployment_spike_end_naive)
                         
                         # Add end annotation with box (like in deployment_recovery)
                         y_pos = ax1.get_ylim()[0] + (ax1.get_ylim()[1] - ax1.get_ylim()[0]) * 0.8
@@ -144,11 +175,8 @@ def plot_spike_data(deployment_spike_data,
                         
                         # Calculate and display spike duration
                         duration = deployment_spike_end_naive - deployment_spike_start_naive
-                        hours, remainder = divmod(duration.total_seconds(), 3600)
-                        minutes, _ = divmod(remainder, 60)
-                        
                         # Add box with spike duration
-                        textstr = f"Spike duration: {int(hours)}h {int(minutes)}m"
+                        textstr = _format_duration(duration)
                         props = dict(boxstyle="round,pad=0.3", facecolor="lightyellow", alpha=0.8)
                         ax1.text(0.5, 0.98, textstr, transform=ax1.transAxes, fontsize=10,
                                verticalalignment="top", bbox=props)
@@ -156,13 +184,13 @@ def plot_spike_data(deployment_spike_data,
                 except Exception as e:
                     print(f"Error adding deployment lines: {e}")
             
-            # Always plot salinity if available, regardless of spike times
-            if sal_var:
-                ax2 = ax1.twinx()
-                ax2.plot(deployment_times, deployment_spike_data[sal_var], 
+                # Plot salinity when available.
+                if sal_var:
+                    ax2 = ax1.twinx()
+                    ax2.plot(deployment_times, deployment_spike_data[sal_var], 
                         color='Orange', label='Salinity')
-                ax2.set_ylabel('Salinity (psu)')
-                ax2.legend(loc='upper right')
+                    ax2.set_ylabel('Salinity (psu)')
+                    ax2.legend(loc='upper right')
                 
             ax1.grid(True, alpha=0.3)
             ax1.xaxis.set_major_locator(MaxNLocator(10))
@@ -203,7 +231,7 @@ def plot_spike_data(deployment_spike_data,
                               alpha=0.7)
                     
                     # Format timestamp for display
-                    time_str = recovery_spike_start_naive.strftime('%Y-%m-%d %H:%M')
+                    time_str = _format_spike_time(recovery_spike_start_naive)
                     
                     # Add start annotation with box (like in deployment_recovery)
                     y_pos = ax3.get_ylim()[0] + (ax3.get_ylim()[1] - ax3.get_ylim()[0]) * 0.6
@@ -216,8 +244,9 @@ def plot_spike_data(deployment_spike_data,
                         fontsize=10
                     )
                     
-                    # Only attempt to draw end line if end time is also provided
-                    if recovery_spike_end_naive is not None:
+                    # Draw an end marker whenever an end time is provided.
+                    has_recovery_interval = recovery_spike_end_naive is not None
+                    if has_recovery_interval:
                         # Draw end vertical line
                         ax3.axvline(x=recovery_spike_end_naive, 
                                       color='red', 
@@ -225,7 +254,7 @@ def plot_spike_data(deployment_spike_data,
                                       alpha=0.7)
                         
                         # Format end timestamp
-                        end_time_str = recovery_spike_end_naive.strftime('%Y-%m-%d %H:%M')
+                        end_time_str = _format_spike_time(recovery_spike_end_naive)
                         
                         # Add end annotation with box (like in deployment_recovery)
                         y_pos = ax3.get_ylim()[0] + (ax3.get_ylim()[1] - ax3.get_ylim()[0]) * 0.8
@@ -240,11 +269,8 @@ def plot_spike_data(deployment_spike_data,
                         
                         # Calculate and display spike duration
                         duration = recovery_spike_end_naive - recovery_spike_start_naive
-                        hours, remainder = divmod(duration.total_seconds(), 3600)
-                        minutes, _ = divmod(remainder, 60)
-                        
                         # Add box with spike duration
-                        textstr = f"Spike duration: {int(hours)}h {int(minutes)}m"
+                        textstr = _format_duration(duration)
                         props = dict(boxstyle="round,pad=0.3", facecolor="lightyellow", alpha=0.8)
                         ax3.text(0.5, 0.98, textstr, transform=ax3.transAxes, fontsize=10,
                                verticalalignment="top", bbox=props)
@@ -252,13 +278,13 @@ def plot_spike_data(deployment_spike_data,
                 except Exception as e:
                     print(f"Error adding recovery lines: {e}")
             
-            # Always plot salinity if available, regardless of spike times
-            if sal_var:
-                ax4 = ax3.twinx()
-                ax4.plot(recovery_times, recovery_spike_data[sal_var], 
+                # Plot salinity when available.
+                if sal_var:
+                    ax4 = ax3.twinx()
+                    ax4.plot(recovery_times, recovery_spike_data[sal_var], 
                         color='Orange', label='Salinity')
-                ax4.set_ylabel('Salinity (psu)')
-                ax4.legend(loc='upper right')
+                    ax4.set_ylabel('Salinity (psu)')
+                    ax4.legend(loc='upper right')
             
             ax3.grid(True, alpha=0.3)
             ax3.xaxis.set_major_locator(MaxNLocator(10))
@@ -938,7 +964,7 @@ def plot_deployment_locations():
     # Define color map
     cmap = plt.get_cmap("tab10", len(deployments))  # Use tab10 colormap, limited to number of deployments
     
-    # Plot each deployment location
+    # Plot each deployment location with open markers for visibility of overlapping points
     for i, deployment in enumerate(deployments):
         # Extract latitude and longitude for this deployment
         lat_str = dataset.attrs.get(f'latitude_{deployment}', '')
@@ -949,12 +975,15 @@ def plot_deployment_locations():
                 lat = float(lat_str)
                 lon = float(lon_str)
                 
-                # Plot the location
+                # Plot the location with open/unfilled marker
                 plt.scatter(lon, lat, 
                             color=cmap(i),  # Use colormap
                             s=100,  # Increased size for visibility
                             label=deployment,
-                            edgecolor='black', linewidth=1.5)
+                            marker='o',
+                            facecolors='none',  # Open/unfilled marker
+                            edgecolors=cmap(i),  # Edge color matches fill color
+                            linewidth=1.5)
             except ValueError as e:
                 print(f"Error plotting deployment {deployment}: {e}")
                 continue

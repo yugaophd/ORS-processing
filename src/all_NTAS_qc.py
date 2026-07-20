@@ -37,9 +37,17 @@ print(files)
 ds0 = xr.open_dataset(files[0])
 if len(files) < 2:
     print("Only one dataset found. process one file only.")
-    ds1 = ds0
+    ds1 = None
+    single_instrument = True
 else:
     ds1 = xr.open_dataset(files[1])
+    # Treat as single-instrument if the second file has no time data (e.g. instrument failed early)
+    if 'time' not in ds1.dims or ds1.dims['time'] == 0:
+        print(f"Second instrument ({files[1]}) has no valid data. Processing single instrument only.")
+        ds1 = None
+        single_instrument = True
+    else:
+        single_instrument = False
 
 # %%
 # Apply spike removal to each variable
@@ -55,7 +63,8 @@ variables = ['sea_water_temperature',
 spike_percentages = {'ds0': {}, 'ds1': {}}
 
 # Apply spike removal to each variable
-for i, ds in enumerate([ds0, ds1]):
+ds_list = [ds0] if single_instrument else [ds0, ds1]
+for i, ds in enumerate(ds_list):
     ds_name = f"ds{i}"
     print(f"\nProcessing {ds_name} - Instrument SN: {ds.attrs.get('instrument_SN', 'unknown')}")
     
@@ -89,7 +98,7 @@ import numpy as np
 
 # Construct the file path
 instrument_SN = ds0.attrs.get('instrument_SN', 'unknown')  # Default to 'unknown' if not present
-instrument_SN2 = ds1.attrs.get('instrument_SN', 'unknown')  # Default to 'unknown' if not present
+instrument_SN2 = ds1.attrs.get('instrument_SN', 'unknown') if not single_instrument else None
 
 labels = ['Temperature (°C)', 'Salinity', 'Absolute Salinity', 'Conductivity (S/m)', 'Pressure']
 panel_titles = ['Temperature Profile', 'Salinity Measurements', 'Absolute Salinity', 'Conductivity Levels', 'Pressure Profile']
@@ -105,7 +114,7 @@ for i, var in enumerate(variables):
         axs[i].plot(ds0[var].time, ds0[var].values, 
                     label=f'{var} (SBE {instrument_SN})', color=colors[i])
     
-    if var in ds1.variables:
+    if not single_instrument and var in ds1.variables:
         print(f'plotting {var} 2')
         axs[i].plot(ds1[var].time, ds1[var].values, 
                     label=f'{var} (SBE {instrument_SN2})', color=colors2[i])
@@ -145,7 +154,7 @@ plot_path = '../../img/'
 if not os.path.exists(plot_path):
     os.makedirs(plot_path)
 
-plot_filename = os.path.join(plot_path, f"{project_name}{project_number}_{instrument_SN}_vs_{instrument_SN2}_no_spike.png")
+plot_filename = os.path.join(plot_path, f"{project_name}{project_number}_{instrument_SN}_vs_{instrument_SN2}_no_spike.png") if not single_instrument else os.path.join(plot_path, f"{project_name}{project_number}_{instrument_SN}_no_spike.png")
 plt.savefig(plot_filename)
 print(f'Plot saved as {plot_filename}')
 
@@ -154,24 +163,26 @@ print(f'Plot saved as {plot_filename}')
 # %% save the cleaned data
 
 ds0.to_netcdf(f'{data_path}/{project_name}{project_number}_{instrument_SN}_cleaned.nc')
-ds1.to_netcdf(f'{data_path}/{project_name}{project_number}_{instrument_SN2}_cleaned.nc')
+if not single_instrument:
+    ds1.to_netcdf(f'{data_path}/{project_name}{project_number}_{instrument_SN2}_cleaned.nc')
 
 # Remove last data point which is potentially abnormal
 ds0 = ds0.isel(time=slice(0, -1))
-ds1 = ds1.isel(time=slice(0, -1))
+if not single_instrument:
+    ds1 = ds1.isel(time=slice(0, -1))
 
 # Save both original and cleaned datasets
 ds0.to_netcdf(f'{data_path}/{project_name}{project_number}_{instrument_SN}_cleaned.nc')
-ds1.to_netcdf(f'{data_path}/{project_name}{project_number}_{instrument_SN2}_cleaned.nc')
+if not single_instrument:
+    ds1.to_netcdf(f'{data_path}/{project_name}{project_number}_{instrument_SN2}_cleaned.nc')
 
 
 # %%
 # human in the loop (HITL) to check the data quality
 # open dataset
 ds0_original = xr.open_dataset(files[0])
-if len(files) < 2:
-    print("Only one dataset found. process one file only.")
-    ds1_original = ds0_original
+if single_instrument:
+    ds1_original = None
 else:
     ds1_original = xr.open_dataset(files[1])
 
@@ -180,7 +191,8 @@ else:
 from qc_function import create_hitl_catalog
 
 create_hitl_catalog(ds0_original, ds0, case_name, instrument_SN)
-create_hitl_catalog(ds1_original, ds1, case_name, instrument_SN2)
+if not single_instrument:
+    create_hitl_catalog(ds1_original, ds1, case_name, instrument_SN2)
 
 # %%
 # Compute the difference statistics
@@ -201,14 +213,15 @@ for var in variables:
         sensor1_data['std'][var] = float(ds0[var].std().values)
 
 # Collect data for sensor 2 (ds1)
-for var in variables:
-    if var in ds1:
-        sensor2_data['mean'][var] = float(ds1[var].mean().values)
-        sensor2_data['std'][var] = float(ds1[var].std().values)
+if not single_instrument:
+    for var in variables:
+        if var in ds1:
+            sensor2_data['mean'][var] = float(ds1[var].mean().values)
+            sensor2_data['std'][var] = float(ds1[var].std().values)
 
 # Specify instrument number or identifier (assuming it's stored in dataset attributes or is known)
-instrument_number1 = ds0.attrs.get('instrument_SN', 'unknown')  # Use the same for ds1 if it's the same instrument
-instrument_number2 = ds1.attrs.get('instrument_SN', 'unknown')
+instrument_number1 = ds0.attrs.get('instrument_SN', 'unknown')
+instrument_number2 = ds1.attrs.get('instrument_SN', 'unknown') if not single_instrument else None
 
 # Add sensor stats to variables
 from qc_function import add_sensor_stats_to_variables
@@ -218,18 +231,23 @@ df1 = pd.DataFrame(sensor1_data)
 df2 = pd.DataFrame(sensor2_data)
 
 # Add sensor stats to variables
-ds0, ds1 = add_sensor_stats_to_variables(ds0, ds1, variables)
+if not single_instrument:
+    ds0, ds1 = add_sensor_stats_to_variables(ds0, ds1, variables)
+else:
+    ds0, _ = add_sensor_stats_to_variables(ds0, ds0, variables)
 
 # %% save the cleaned data
 
 ds0.to_netcdf(f'{data_path}/{project_name}{project_number}_{instrument_SN}_cleaned.nc')
-ds1.to_netcdf(f'{data_path}/{project_name}{project_number}_{instrument_SN2}_cleaned.nc')
+if not single_instrument:
+    ds1.to_netcdf(f'{data_path}/{project_name}{project_number}_{instrument_SN2}_cleaned.nc')
 
 # Specify output directory, which can depend on your project structure
 output_dir = f'../doc/{project_name}/{project_number}'
 
 # Call the function to export LaTeX tables
-export_diff_stats(sensor1_data, sensor2_data, instrument_number1,instrument_number2, 
+export_diff_stats(sensor1_data, sensor2_data if not single_instrument else sensor1_data,
+                    instrument_number1, instrument_number2 if not single_instrument else instrument_number1,
                     output_dir, project_name, project_number)
 
 # %%
@@ -237,15 +255,20 @@ export_diff_stats(sensor1_data, sensor2_data, instrument_number1,instrument_numb
 from qc_function import export_spike_stats
 
 # Format the spike data for export
-spike_data = {
-    f'instrument_{instrument_SN}': spike_percentages['ds0'],
-    f'instrument_{instrument_SN2}': spike_percentages['ds1']
-}
+if single_instrument:
+    spike_data = {f'instrument_{instrument_SN}': spike_percentages['ds0']}
+    instrument_sns = [instrument_SN]
+else:
+    spike_data = {
+        f'instrument_{instrument_SN}': spike_percentages['ds0'],
+        f'instrument_{instrument_SN2}': spike_percentages['ds1']
+    }
+    instrument_sns = [instrument_SN, instrument_SN2]
 
 # Export to LaTeX file in the doc directory
 export_spike_stats(
-    spike_data, 
-    [instrument_SN, instrument_SN2],  # List of instrument numbers
+    spike_data,
+    instrument_sns,  # List of instrument numbers
     output_dir,                       # Using the same output_dir you defined earlier
     project_name,                     # Project name (stratus)
     project_number                    # Project number (15) 

@@ -96,10 +96,10 @@ def plot_deployment_locations():
             scatter = ax.scatter(longitudes[j], latitudes[j], 
                      s=180,  # Keep the increased marker size
                      marker='o',
-                     c=high_contrast_colors[color_idx],  # Use high contrast color
-                     edgecolor='black', 
-                     linewidth=1.5,
-                     alpha=0.85,  # Slightly increased opacity for better contrast
+                     facecolors='none',
+                     edgecolors=high_contrast_colors[color_idx],  # Use high contrast color
+                     linewidth=2.0,
+                     alpha=1.0,
                      label=f'STRATUS {deployment_num}',
                      zorder=2)
         

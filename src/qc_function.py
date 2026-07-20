@@ -86,14 +86,12 @@ def export_diff_stats(sensor1_data, sensor2_data, instrument_number1, instrument
     # Ensure the output directory exists
     os.makedirs(output_dir, exist_ok=True)
     
+    # Detect single-instrument case: instrument_number2 is None or same as instrument_number1
+    single_instrument = instrument_number2 is None or instrument_number1 == instrument_number2
+
     # Create DataFrames
     df1 = pd.DataFrame(sensor1_data)
     df2 = pd.DataFrame(sensor2_data)
-    
-    # Calculate differences
-    diff_means = df1['mean'] - df2['mean']
-    diff_stds = (df1['std']**2 + df2['std']**2)**0.5  # Combined standard deviation
-    qc_threshold = 3 * diff_stds  # Quality control threshold
 
     # Function to escape underscores for LaTeX
     def escape_latex(text):
@@ -105,36 +103,46 @@ def export_diff_stats(sensor1_data, sensor2_data, instrument_number1, instrument
     # Prepare LaTeX output
     tex_path = os.path.join(output_dir, f'diff_stats.tex')
     with open(tex_path, 'w') as f:
-        # Table 1: Statistics for individual sensors
-        f.write("\\begin{table}[h]\n\\centering\n")
-        f.write("\\begin{tabular}{|c|c|c|c|c|}\n\\hline\n")
-        f.write(f"Variable & \\multicolumn{{2}}{{c|}}{{SN {instrument_number1}}} & \\multicolumn{{2}}{{c|}}{{SN {instrument_number2}}} \\\\\n")
+        if single_instrument:
+            # Single-instrument: one stats table, no diff table
+            f.write("\\begin{table}[h]\n\\centering\n")
+            f.write("\\begin{tabular}{|c|c|c|}\n\\hline\n")
+            f.write(f"Variable & \\multicolumn{{2}}{{c|}}{{SN {instrument_number1}}} \\\\\n")
+            f.write("& Mean & Std Dev \\\\\n\\hline\n")
+            for var in df1.index:
+                escaped_var = escape_latex(var)
+                f.write(f"{escaped_var} & {df1.at[var, 'mean']:.5f} & {df1.at[var, 'std']:.5f} \\\\\n")
+            f.write("\\hline\n\\end{tabular}\n")
+            f.write(f"\\caption{{Statistics for SN {instrument_number1} on {project_name} {project_number}. Only one instrument returned valid data for this deployment.}}\n")
+            f.write("\\end{table}\n")
+        else:
+            # Two-instrument: stats table + diff table
+            diff_means = df1['mean'] - df2['mean']
+            diff_stds = (df1['std']**2 + df2['std']**2)**0.5
+            qc_threshold = 3 * diff_stds
 
-        f.write("& Mean & Std Dev & Mean & Std Dev \\\\\n\\hline\n")
-        for var in df1.index:
-            # Escape underscores in variable names
-            escaped_var = escape_latex(var)
-            f.write(f"{escaped_var} & {df1.at[var, 'mean']:.5f} & {df1.at[var, 'std']:.5f} & {df2.at[var, 'mean']:.5f} & {df2.at[var, 'std']:.5f} \\\\\n")
-        f.write("\\hline\n\\end{tabular}\n")
-        f.write(f"\\caption{{Statistics for individual sensors on {project_name} {project_number}}}\n")
+            # Table 1: Statistics for individual sensors
+            f.write("\\begin{table}[h]\n\\centering\n")
+            f.write("\\begin{tabular}{|c|c|c|c|c|}\n\\hline\n")
+            f.write(f"Variable & \\multicolumn{{2}}{{c|}}{{SN {instrument_number1}}} & \\multicolumn{{2}}{{c|}}{{SN {instrument_number2}}} \\\\\n")
+            f.write("& Mean & Std Dev & Mean & Std Dev \\\\\n\\hline\n")
+            for var in df1.index:
+                escaped_var = escape_latex(var)
+                f.write(f"{escaped_var} & {df1.at[var, 'mean']:.5f} & {df1.at[var, 'std']:.5f} & {df2.at[var, 'mean']:.5f} & {df2.at[var, 'std']:.5f} \\\\\n")
+            f.write("\\hline\n\\end{tabular}\n")
+            f.write(f"\\caption{{Statistics for individual sensors on {project_name} {project_number}}}\n")
+            f.write("\\end{table}\n\n")
 
-        f.write("\\end{table}\n\n")
-
-        # Table 2: Difference statistics
-        f.write("\\begin{table}[h]\n\\centering\n")
-        f.write("\\begin{tabular}{|c|c|c|c|}\n\\hline\n")
-        f.write("Variable & Mean Diff & Std Diff & QC Threshold \\\\\n\\hline\n")
-        for var in diff_means.index:
-            # Escape underscores in variable names
-            escaped_var = escape_latex(var)
-            f.write(f"{escaped_var} & {diff_means[var]:.5f} & {diff_stds[var]:.5f} & {qc_threshold[var]:.5f} \\\\\n")
-        f.write("\\hline\n\\end{tabular}\n")
-        
-        f.write(
-        f"\\caption{{Statistics for difference between sensors on {project_name} {project_number}}}\n"
-        )
-
-        f.write("\\end{table}\n")
+            # Table 2: Difference statistics
+            f.write("\\begin{table}[h]\n\\centering\n")
+            f.write("\\begin{tabular}{|c|c|c|c|}\n\\hline\n")
+            f.write("Variable & Mean Diff & Std Diff & QC Threshold \\\\\n\\hline\n")
+            for var in diff_means.index:
+                escaped_var = escape_latex(var)
+                f.write(f"{escaped_var} & {diff_means[var]:.5f} & {diff_stds[var]:.5f} & {qc_threshold[var]:.5f} \\\\\n")
+            f.write("\\hline\n\\end{tabular}\n")
+            f.write(f"\\caption{{Statistics for difference between sensors on {project_name} {project_number}}}\n")
+            f.write("\\end{table}\n")
     
     print(f"LaTeX tables exported to {tex_path}")
 
@@ -165,6 +173,33 @@ def create_hitl_catalog(original_ds, qc_ds, deployment_id, instrument_number, ou
     
     fig, axs = plt.subplots(5, 1, figsize=(15, 25))
     # fig.suptitle(f"Deployment {title_name}: Original vs QC Data", fontsize=16)
+
+    def _valid_numeric_values(da):
+        vals = np.asarray(da.values, dtype=float)
+        vals = vals[np.isfinite(vals)]
+        # Exclude project fill value if present in data arrays
+        vals = vals[vals != -99999.0]
+        return vals
+
+    def _apply_robust_ylim(ax, original_da, qc_da):
+        combined = np.concatenate([_valid_numeric_values(original_da), _valid_numeric_values(qc_da)])
+        if combined.size < 20:
+            return
+
+        lo = np.nanpercentile(combined, 1)
+        hi = np.nanpercentile(combined, 99)
+        robust_span = hi - lo
+        full_lo = np.nanmin(combined)
+        full_hi = np.nanmax(combined)
+        full_span = full_hi - full_lo
+
+        if not np.isfinite(robust_span) or robust_span <= 0:
+            return
+
+        # If a few extremes dominate the axis, show the central distribution.
+        if np.isfinite(full_span) and full_span > 8 * robust_span:
+            pad = robust_span * 0.08
+            ax.set_ylim(lo - pad, hi + pad)
     
     for i, var in enumerate(variables):
         # Plot original data
@@ -172,6 +207,9 @@ def create_hitl_catalog(original_ds, qc_ds, deployment_id, instrument_number, ou
         
         # Plot QC data
         qc_ds[var].plot(ax=axs[i], label='QC', alpha=0.7)
+
+        # Keep the bulk signal readable when extreme anomalies exist.
+        _apply_robust_ylim(axs[i], original_ds[var], qc_ds[var])
         
         # Highlight removed points
         mask = np.isnan(qc_ds[var]) & ~np.isnan(original_ds[var])

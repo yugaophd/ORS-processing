@@ -9,6 +9,37 @@ import matplotlib.pyplot as plt
 import numpy as np
 from plot_function import plot_merged_dataset
 
+
+def _gap_masked_line(time_values, data_values, gap_factor=10):
+    """Insert NaNs at large temporal gaps so matplotlib does not connect them."""
+    t = pd.to_datetime(np.asarray(time_values), utc=True).tz_localize(None)
+    y = np.asarray(data_values, dtype=float)
+
+    if len(t) < 2:
+        return t, y
+
+    dt = t[1:] - t[:-1]
+    positive_dt = dt[dt > pd.Timedelta(0)]
+    if len(positive_dt) == 0:
+        return t, y
+
+    threshold = positive_dt.median() * gap_factor
+    break_indices = set(np.flatnonzero(dt > threshold))
+    if not break_indices:
+        return t, y
+
+    out_t = []
+    out_y = []
+    for i, (ti, yi) in enumerate(zip(t, y)):
+        out_t.append(ti)
+        out_y.append(yi)
+        if i in break_indices:
+            out_t.append(ti + dt[i] / 2)
+            out_y.append(np.nan)
+
+    out_t = pd.to_datetime(np.asarray(out_t), utc=True).tz_localize(None)
+    return out_t, np.asarray(out_y)
+
 # %%
 # Set working directory and path definitions
 os.chdir('/Users/yugao/UOP/ORS-processing/src')
@@ -123,11 +154,13 @@ def create_comparison_plots(datasets, ranges):
             start_case, end_case = ranges[i]
             if var_name in ds:
                 label = f"{end_case}"
-                ax.plot(ds.time, ds[var_name], label=label, linewidth=1.5)
+                plot_t, plot_v = _gap_masked_line(ds.time.values, ds[var_name].values)
+                ax.plot(plot_t, plot_v, label=label, linewidth=1.5)
         
         # Add the latest/most complete dataset
         label = f"{ranges[-1][1]} (Latest)"
-        ax.plot(datasets[-1].time, datasets[-1][var_name], 
+        latest_t, latest_v = _gap_masked_line(datasets[-1].time.values, datasets[-1][var_name].values)
+        ax.plot(latest_t, latest_v, 
                 label=label, linewidth=2.5, color='black')
         
         # Set title and labels

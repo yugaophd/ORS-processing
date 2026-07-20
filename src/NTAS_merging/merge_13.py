@@ -181,8 +181,8 @@ merged_dataset.attrs = ds0_merge.attrs.copy()
 # Data source is the second dataset
 ds_source = ds1_merge
 if ds_source.attrs['platform_buoy_recovery_time'] == '':
-    ds_source.attrs['platform_buoy_recovery_time'] = 'missing'
-    
+    ds_source.attrs['platform_buoy_recovery_time'] = '2014-12-15T12:00:00Z'
+
 if ds_source.attrs['platform_anchor_over_time'] == '':
     ds_source.attrs['platform_anchor_over_time'] = 'missing'
 # Standardize the new merge point timestamp

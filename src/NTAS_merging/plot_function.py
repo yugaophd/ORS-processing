@@ -41,6 +41,44 @@ def safe_convert_dataset_times(ds):
         else:
             times.append(pd.to_datetime(t).to_pydatetime())
     return times
+
+
+def _should_plot_salinity(series):
+    """Return True when salinity values are present and not effectively all zeros."""
+    vals = np.asarray(series, dtype=float)
+    finite = np.isfinite(vals)
+    if not finite.any():
+        return False
+
+    finite_vals = vals[finite]
+    sal_range = np.nanmax(finite_vals) - np.nanmin(finite_vals)
+    sal_median_abs = np.nanmedian(np.abs(finite_vals))
+
+    # Some raw files contain near-zero placeholders that flatten the panel.
+    return not (sal_median_abs < 1e-3 and sal_range < 1e-3)
+
+
+def _format_spike_time(ts):
+    return ts.strftime('%Y-%m-%d %H:%M:%S')
+
+
+def _format_duration(delta):
+    total_seconds = int(max(0, delta.total_seconds()))
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    if hours == 0 and minutes == 0:
+        return f"Spike duration: {seconds}s"
+    if hours == 0:
+        return f"Spike duration: {minutes}m {seconds}s"
+    return f"Spike duration: {hours}h {minutes}m"
+
+def reference_site_label(dataset):
+    """Return a compact label for the first deployment in a merged time series."""
+    site_code = str(dataset.attrs.get('site_code') or dataset.attrs.get('platform_code') or 'reference').upper()
+    deployment = str(dataset.attrs.get('deployment', '')).split(',')[0].strip()
+    if deployment and deployment.lower() not in {'missing', 'unknown', 'none'}:
+        return f'{site_code} {deployment}'
+    return f'{site_code} reference'
     
 def plot_spike_data(deployment_spike_data, 
                    recovery_spike_data, 
@@ -107,7 +145,7 @@ def plot_spike_data(deployment_spike_data,
                                 alpha=0.7)
                     
                     # Format timestamp for display
-                    time_str = deployment_spike_start_naive.strftime('%Y-%m-%d %H:%M')
+                    time_str = _format_spike_time(deployment_spike_start_naive)
                     
                     # Add start annotation with box (like in deployment_recovery)
                     y_pos = ax1.get_ylim()[0] + (ax1.get_ylim()[1] - ax1.get_ylim()[0]) * 0.6
@@ -120,8 +158,9 @@ def plot_spike_data(deployment_spike_data,
                         fontsize=10
                     )
                     
-                    # Only attempt to draw end line if end time is also provided
-                    if deployment_spike_end_naive is not None:
+                    # Draw an end marker whenever an end time is provided.
+                    has_deployment_interval = deployment_spike_end_naive is not None
+                    if has_deployment_interval:
                         # Draw end vertical line
                         ax1.axvline(x=deployment_spike_end_naive, 
                                     color='Red', 
@@ -129,7 +168,7 @@ def plot_spike_data(deployment_spike_data,
                                     alpha=0.7)
                         
                         # Format end timestamp
-                        end_time_str = deployment_spike_end_naive.strftime('%Y-%m-%d %H:%M')
+                        end_time_str = _format_spike_time(deployment_spike_end_naive)
                         
                         # Add end annotation with box (like in deployment_recovery)
                         y_pos = ax1.get_ylim()[0] + (ax1.get_ylim()[1] - ax1.get_ylim()[0]) * 0.8
@@ -144,11 +183,8 @@ def plot_spike_data(deployment_spike_data,
                         
                         # Calculate and display spike duration
                         duration = deployment_spike_end_naive - deployment_spike_start_naive
-                        hours, remainder = divmod(duration.total_seconds(), 3600)
-                        minutes, _ = divmod(remainder, 60)
-                        
                         # Add box with spike duration
-                        textstr = f"Spike duration: {int(hours)}h {int(minutes)}m"
+                        textstr = _format_duration(duration)
                         props = dict(boxstyle="round,pad=0.3", facecolor="lightyellow", alpha=0.8)
                         ax1.text(0.5, 0.98, textstr, transform=ax1.transAxes, fontsize=10,
                                verticalalignment="top", bbox=props)
@@ -156,13 +192,13 @@ def plot_spike_data(deployment_spike_data,
                 except Exception as e:
                     print(f"Error adding deployment lines: {e}")
             
-            # Always plot salinity if available, regardless of spike times
-            if sal_var:
-                ax2 = ax1.twinx()
-                ax2.plot(deployment_times, deployment_spike_data[sal_var], 
+                # Plot salinity when available.
+                if sal_var:
+                    ax2 = ax1.twinx()
+                    ax2.plot(deployment_times, deployment_spike_data[sal_var], 
                         color='Orange', label='Salinity')
-                ax2.set_ylabel('Salinity (psu)')
-                ax2.legend(loc='upper right')
+                    ax2.set_ylabel('Salinity (psu)')
+                    ax2.legend(loc='upper right')
                 
             ax1.grid(True, alpha=0.3)
             ax1.xaxis.set_major_locator(MaxNLocator(10))
@@ -203,7 +239,7 @@ def plot_spike_data(deployment_spike_data,
                               alpha=0.7)
                     
                     # Format timestamp for display
-                    time_str = recovery_spike_start_naive.strftime('%Y-%m-%d %H:%M')
+                    time_str = _format_spike_time(recovery_spike_start_naive)
                     
                     # Add start annotation with box (like in deployment_recovery)
                     y_pos = ax3.get_ylim()[0] + (ax3.get_ylim()[1] - ax3.get_ylim()[0]) * 0.6
@@ -216,8 +252,9 @@ def plot_spike_data(deployment_spike_data,
                         fontsize=10
                     )
                     
-                    # Only attempt to draw end line if end time is also provided
-                    if recovery_spike_end_naive is not None:
+                    # Draw an end marker whenever an end time is provided.
+                    has_recovery_interval = recovery_spike_end_naive is not None
+                    if has_recovery_interval:
                         # Draw end vertical line
                         ax3.axvline(x=recovery_spike_end_naive, 
                                       color='red', 
@@ -225,7 +262,7 @@ def plot_spike_data(deployment_spike_data,
                                       alpha=0.7)
                         
                         # Format end timestamp
-                        end_time_str = recovery_spike_end_naive.strftime('%Y-%m-%d %H:%M')
+                        end_time_str = _format_spike_time(recovery_spike_end_naive)
                         
                         # Add end annotation with box (like in deployment_recovery)
                         y_pos = ax3.get_ylim()[0] + (ax3.get_ylim()[1] - ax3.get_ylim()[0]) * 0.8
@@ -240,11 +277,8 @@ def plot_spike_data(deployment_spike_data,
                         
                         # Calculate and display spike duration
                         duration = recovery_spike_end_naive - recovery_spike_start_naive
-                        hours, remainder = divmod(duration.total_seconds(), 3600)
-                        minutes, _ = divmod(remainder, 60)
-                        
                         # Add box with spike duration
-                        textstr = f"Spike duration: {int(hours)}h {int(minutes)}m"
+                        textstr = _format_duration(duration)
                         props = dict(boxstyle="round,pad=0.3", facecolor="lightyellow", alpha=0.8)
                         ax3.text(0.5, 0.98, textstr, transform=ax3.transAxes, fontsize=10,
                                verticalalignment="top", bbox=props)
@@ -252,13 +286,13 @@ def plot_spike_data(deployment_spike_data,
                 except Exception as e:
                     print(f"Error adding recovery lines: {e}")
             
-            # Always plot salinity if available, regardless of spike times
-            if sal_var:
-                ax4 = ax3.twinx()
-                ax4.plot(recovery_times, recovery_spike_data[sal_var], 
+                # Plot salinity when available.
+                if sal_var:
+                    ax4 = ax3.twinx()
+                    ax4.plot(recovery_times, recovery_spike_data[sal_var], 
                         color='Orange', label='Salinity')
-                ax4.set_ylabel('Salinity (psu)')
-                ax4.legend(loc='upper right')
+                    ax4.set_ylabel('Salinity (psu)')
+                    ax4.legend(loc='upper right')
             
             ax3.grid(True, alpha=0.3)
             ax3.xaxis.set_major_locator(MaxNLocator(10))
@@ -527,7 +561,7 @@ def plot_merged_dataset(dataset, save_path, case_name0=None, case_name1=None, fi
                       annotate_merge_points=False):
     """
     Plot merged dataset with multiple variables and optional merge point lines.
-    Includes a panel showing distance from Stratus 12 and between consecutive sites.
+    Includes a panel showing distance from the first deployment and between consecutive sites.
     """
     # Default variables to plot if not specified
     if variables is None:
@@ -596,10 +630,11 @@ def plot_merged_dataset(dataset, save_path, case_name0=None, case_name1=None, fi
     if distance_da is not None:
         # Use the last axis for distance
         dist_ax = axs[-1]
+        reference_label = reference_site_label(dataset)
         dist_ax.plot(distance_da.time, distance_da, color='darkred', drawstyle='steps-post', 
-                   linewidth=2, label='Distance from STRATUS 12')
-        dist_ax.set_title('STRATUS Site Distances')
-        dist_ax.set_ylabel('Distance from STRATUS 12 (km)')
+                   linewidth=2, label=f'Distance from {reference_label}')
+        dist_ax.set_title(f'{reference_label.split()[0]} Site Distances')
+        dist_ax.set_ylabel(f'Distance from {reference_label} (km)')
         dist_ax.grid(True)
         dist_ax.legend(loc='upper left')
         
@@ -648,7 +683,7 @@ def plot_merged_dataset(dataset, save_path, case_name0=None, case_name1=None, fi
     return fig
 def calculate_distance_timeseries(dataset):
     """
-    Calculate the distance in kilometers from the Stratus 12 reference position
+    Calculate the distance in kilometers from the first deployment reference position
     for each time point based on merge points.
     
     Returns a DataArray with distance values.
@@ -666,15 +701,18 @@ def calculate_distance_timeseries(dataset):
         lats = [float(x.strip()) for x in lat_str.split(',')]
         lons = [float(x.strip()) for x in lon_str.split(',')]
         
-        # Stratus 12 is the reference position (first in the list)
+        # The first deployment is the reference position.
         ref_lat, ref_lon = lats[0], lons[0]
+        reference_label = reference_site_label(dataset)
+        deployment_labels = [x.strip() for x in str(dataset.attrs.get('deployment', '')).split(',')]
         
         # Create a dictionary of positions for each deployment
         positions = []
         for i in range(len(lats)):
             dist = geodesic((ref_lat, ref_lon), (lats[i], lons[i])).kilometers
             positions.append((lats[i], lons[i], dist))
-            print(f"Deployment {i+12} position: ({lats[i]}, {lons[i]}), Distance from Stratus 12: {dist:.2f} km")
+            deployment_label = deployment_labels[i] if i < len(deployment_labels) and deployment_labels[i] else i + 1
+            print(f"Deployment {deployment_label} position: ({lats[i]}, {lons[i]}), Distance from {reference_label}: {dist:.2f} km")
     except Exception as e:
         print(f"Error parsing coordinates: {e}")
         return None
@@ -702,8 +740,8 @@ def calculate_distance_timeseries(dataset):
     times = dataset.time.values
     distances = np.zeros(len(times))
     
-    # First segment (Stratus 12)
-    distances[:] = positions[0][2]  # Distance is 0 for Stratus 12
+    # First segment is the reference position.
+    distances[:] = positions[0][2]
     
     # Update distance for each segment
     for i in range(1, len(all_times)):
@@ -723,7 +761,7 @@ def calculate_distance_timeseries(dataset):
         coords={'time': dataset.time},
         dims=['time'],
         attrs={
-            'long_name': 'Distance from Stratus 12 reference position',
+            'long_name': f'Distance from {reference_label} reference position',
             'units': 'kilometers',
             'reference_latitude': ref_lat,
             'reference_longitude': ref_lon
@@ -860,7 +898,7 @@ def calculate_consecutive_distances(dataset):
             time_i = to_naive_datetime(time)
             
             # Determine which segment this time belongs to
-            segment_idx = 0  # Default to segment 0 (Stratus 12)
+            segment_idx = 0  # Default to the first deployment segment.
             for j, merge_point in enumerate(merge_points[1:], 1):  # Skip first merge point
                 if time_i >= merge_point:
                     segment_idx = j

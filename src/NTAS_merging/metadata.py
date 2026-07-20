@@ -207,21 +207,21 @@ def get_standard_oceansites_attributes():
     Returns standard default attributes for OceanSITES compliance
     """
     return OrderedDict([
-        ("site_code", "Stratus"),
+        ("site_code", "NTAS"),
         ("data_type", "OceanSITES time-series data"),
         ("format_version", "1.4"),
-        ("principal_investigator", "Robert Weller"),
-        ("experiment", "Stratus Ocean Reference Station"),
+        ("principal_investigator", "A. Plueddemann"),
+        ("experiment", "NTAS Ocean Reference Station"),
         ("platform_type", "moored surface buoy"),
-        ("institution", "WHOI"),
+        ("institution", "Woods Hole Oceanographic Institution"),
         ("data_assembly_center", "WHOI-UOP"),
         ("source", "Mooring observation"),
         ("naming_authority", "OceanSITES"),
         ("cdm_data_type", "Station"),
-        ("wmo_platform_code", "38400"),
+        ("wmo_platform_code", "48401"),
         ("network", "OceanSITES"),
-        ("platform_code", ""),
-        ("principal_investigator_email", "rweller@whoi.edu"),
+        ("platform_code", "NTAS"),
+        ("principal_investigator_email", "aplueddemann@whoi.edu"),
     ])
 
 def ensure_standard_attributes(dataset):

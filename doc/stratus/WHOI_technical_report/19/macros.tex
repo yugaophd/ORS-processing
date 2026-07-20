@@ -1,20 +1,20 @@
 \renewcommand{\projectname}{stratus}  % Default project name
-\renewcommand{\displayprojectname}{STRATUS}
+\renewcommand{\displayprojectname}{Stratus}
 \renewcommand{\caseyear}{2021}  % Updated year for Stratus 19
 \renewcommand{\casenumber}{19}  % Updated to Stratus 19
 \renewcommand{\previouscasenumber}{18}  % Previous case number (was Stratus 18)
 \renewcommand{\imagepath}{/Users/yugao/UOP/ORS-processing/img}  % Path to images
-\renewcommand{\HasNextDeploymentOverlap}{yes}  % No overlap between datasets as specified
+\renewcommand{\HasNextDeploymentOverlap}{yes}  % Overlap detected between deployments
 \renewcommand{\FirstInstrumentType}{SBE37}  % Type of first instrument
 \renewcommand{\SecondInstrumentType}{SBE37}  % Type of second instrument
-\renewcommand{\DeploymentSpike}{01/25/2021 11:35} % From config file
-\renewcommand{\DeploymentRecordedSpike}{01/25/2021 11:35}  % Same as above
-\renewcommand{\RecoverySpike}{09/25/2021 00:10} % Mooring parted on this date per config file comment
-\renewcommand{\RecoveryRecordedSpike}{09/25/2021 00:10} % Same as above
+\renewcommand{\DeploymentSpike}{2021-01-25 11:35} % Matches stratus19_config.json deployment_spike_times.start
+\renewcommand{\DeploymentRecordedSpike}{2021-01-25 11:35}  % Same as above
+\renewcommand{\RecoverySpike}{not recorded} % No recovery spike start/end recorded; recovery_spike_times are null in config (Stratus 19 mooring parted on 2021-09-25 and was not recovered with the standard recovery procedure)
+\renewcommand{\RecoveryRecordedSpike}{not recorded} % No recovery spike start/end recorded in mooring log
 \renewcommand{\FirstInstrument}{11379} % First instrument from config
-\renewcommand{\SecondInstrument}{11394} % Second instrument from config , chosen for merge
+\renewcommand{\SecondInstrument}{11394} % Second instrument from config
 \renewcommand{\PreviousDeploymentInstrument}{\FirstInstrumentType{} 10600}  % Instrument from Stratus 18
-\renewcommand{\CurrentDeploymentInstrument}{\FirstInstrumentType{} \SecondInstrument}  % Instrument 11394 from Stratus 19
+\renewcommand{\CurrentDeploymentInstrument}{\FirstInstrumentType{} \FirstInstrument}  % Instrument 11379 from Stratus 19
 \renewcommand{\pressureavailable}{yes}  % Assume pressure data is available
 \renewcommand{\pressurenote}{}
 \ifthenelse{\equal{\pressureavailable}{no}}{

@@ -14,34 +14,53 @@
   "fixed_attributes": {
     "data_type": "OceanSITES time-series data",
     "format_version": "1.4",
-    "network": "OceanSITES"
+    "principal_investigator": "Robert Weller",
+    "principal_investigator_email": "rweller@whoi.edu",
+    "experiment": "Stratus Ocean Reference Station",
+    "site_code": "Stratus",
+    "institution": "Woods Hole Oceanographic Institution",
+    "data_assembly_center": "Upper Ocean Processes Group at Woods Hole Oceanographic",
+    "wmo_platform_code": "38400",
+    "network": "OceanSITES",
+    "data_mode": "D",
+    "QC_indicator": "good data",
+    "processing_level": "Data manually reviewed, clocks checked",
+    "citation": "Data from the Stratus Ocean Reference Station were made available by Dr. Robert Weller of the Woods Hole Oceanographic Institution, with support from the Global Ocean Monitoring and Observing (GOMO) Program of the National Oceanic and Atmospheric Administration, U.S. Department of Commerce. These data are made freely available by the OceanSITES project and the national programs that contribute to it.",
+    "acknowledgement": "Support for this research was provided by the Global Ocean Monitoring and Observing (GOMO) Program, formerly the Ocean Observing and Monitoring Division, Climate Program Office (FundRef number 100007298), of the National Oceanic and Atmospheric Administration, U.S. Department of Commerce, under grant NA14OAR4320158.",
+    "principal_investigator_id": "https://orcid.org/0000-0001-8001-6886"
   },
   "dynamic_attributes": {
-    "platform_code": "Stratus"
+    "platform_code": "Stratus",
+    "title": "Ocean salinity data from deep sensors on surface mooring Stratus deployment {case_number}"
   },
   "variable_attributes": {
     "sea_water_temperature": {
-      "units": "°C",
+      "standard_name": "sea_water_temperature",
+      "units": "degree_C",
       "long_name": "sea water temperature",
       "comment": "Temperature measured directly by the instrument sensor."
     },
     "sea_water_practical_salinity": {
-      "units": "psu",
+      "standard_name": "sea_water_practical_salinity",
+      "units": "1",
       "long_name": "sea water practical salinity",
       "comment": "Practical salinity calculated using the TEOS-10 algorithm at the fixed instrument depth."
     },
     "sea_water_absolute_salinity": {
-      "units": "g/kg",
+      "standard_name": "sea_water_absolute_salinity",
+      "units": "g kg-1",
       "long_name": "sea water absolute salinity",
       "comment": "Absolute salinity calculated using the TEOS-10 algorithm at the fixed instrument depth."
     },
     "sea_water_pressure": {
+      "standard_name": "sea_water_pressure",
       "units": "dbar",
       "long_name": "sea water pressure",
       "comment": "Pressure comes from instrument without any further processing."
     },
     "sea_water_electrical_conductivity": {
-      "units": "S/m",
+      "standard_name": "sea_water_electrical_conductivity",
+      "units": "S m-1",
       "long_name": "sea water conductivity",
       "comment": "Conductivity measured directly by the instrument sensor."
     }

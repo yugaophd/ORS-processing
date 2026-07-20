@@ -23,6 +23,93 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     
     return distance_km, distance_nm
 
+def deployment_range_label(site_code, deployments):
+    cleaned_deployments = [deployment.strip() for deployment in deployments if deployment.strip()]
+    if not cleaned_deployments:
+        return site_code
+
+    return f"{site_code} {cleaned_deployments[0]}-{cleaned_deployments[-1]}"
+
+def to_naive_datetime(values):
+    datetime_values = pd.to_datetime(values, utc=True)
+    return datetime_values.tz_localize(None)
+
+def add_line_breaks_for_time_gaps(time, values, gap_factor=10):
+    """
+    Insert NaNs after large time-coordinate gaps so line plots do not connect
+    the last valid point before a gap to the first valid point after it.
+    """
+    time_index = to_naive_datetime(np.asarray(time))
+    values_array = np.asarray(values, dtype=float)
+
+    if len(time_index) < 2:
+        return time_index, values_array, pd.Timedelta(0), 0
+
+    time_deltas = time_index[1:] - time_index[:-1]
+    valid_deltas = time_deltas[time_deltas > pd.Timedelta(0)]
+    if len(valid_deltas) == 0:
+        return time_index, values_array, pd.Timedelta(0), 0
+
+    sample_interval = valid_deltas.median()
+    gap_threshold = sample_interval * gap_factor
+    gap_after_indices = set(np.flatnonzero(time_deltas > gap_threshold))
+
+    if not gap_after_indices:
+        return time_index, values_array, gap_threshold, 0
+
+    plot_times = []
+    plot_values = []
+    for i, (time_value, data_value) in enumerate(zip(time_index, values_array)):
+        plot_times.append(time_value)
+        plot_values.append(data_value)
+
+        if i in gap_after_indices:
+            plot_times.append(time_value + time_deltas[i] / 2)
+            plot_values.append(np.nan)
+
+    return to_naive_datetime(plot_times), np.asarray(plot_values), gap_threshold, len(gap_after_indices)
+
+def add_line_breaks_for_missing_deployments(times, values, deployments):
+    """
+    Insert NaNs where deployment numbers skip, e.g. NTAS 14 to NTAS 16.
+    """
+    times = to_naive_datetime(times)
+    values = np.asarray(values, dtype=float)
+    deployment_numbers = []
+
+    for deployment in deployments:
+        try:
+            deployment_numbers.append(int(deployment.strip()))
+        except ValueError:
+            deployment_numbers.append(None)
+
+    if len(times) < 2:
+        return times, values, 0
+
+    plot_times = []
+    plot_values = []
+    missing_deployment_gaps = 0
+
+    for i, (time_value, data_value) in enumerate(zip(times, values)):
+        plot_times.append(time_value)
+        plot_values.append(data_value)
+
+        if i >= len(times) - 1:
+            continue
+
+        current_deployment = deployment_numbers[i]
+        next_deployment = deployment_numbers[i + 1]
+        if (
+            current_deployment is not None
+            and next_deployment is not None
+            and next_deployment > current_deployment + 1
+        ):
+            plot_times.append(time_value + (times[i + 1] - time_value) / 2)
+            plot_values.append(np.nan)
+            missing_deployment_gaps += 1
+
+    return to_naive_datetime(plot_times), np.asarray(plot_values), missing_deployment_gaps
+
 def plot_temperature_and_distance(merged_dataset_path, output_path):
     """
     Plot temperature time series and cumulative distance between deployments.
@@ -34,37 +121,48 @@ def plot_temperature_and_distance(merged_dataset_path, output_path):
     
     # Load the merged dataset
     ds = xr.open_dataset(merged_dataset_path)
+    site_code = ds.attrs.get('site_code', 'NTAS')
     
     # Extract deployment information from attributes
     deployments = ds.attrs.get('deployment', '').split(', ')
     latitudes = [float(lat.strip()) for lat in ds.attrs.get('latitude_anchor_survey', '').split(', ')]
     longitudes = [float(lon.strip()) for lon in ds.attrs.get('longitude_anchor_survey', '').split(', ')]
+    reference_deployment = deployments[0].strip()
+    deployment_label = deployment_range_label(site_code, deployments)
     
-    # Calculate distances from NTAS 12 (reference point)
+    # Calculate distances from the first deployment site.
     reference_lat, reference_lon = latitudes[0], longitudes[0]
     distances_from_ref = []
     
     for i, (lat, lon) in enumerate(zip(latitudes, longitudes)):
         if i == 0:
-            # NTAS 12 is the reference point, so distance is 0
             distances_from_ref.append(0.0)
         else:
             dist_km, _ = haversine_distance(reference_lat, reference_lon, lat, lon)
             distances_from_ref.append(dist_km)
     
     # Debug: Print the distances
-    print(f"Debug: Distances from NTAS 12:")
+    print(f"Debug: Distances from {site_code} {reference_deployment}:")
     for i, (dep, dist) in enumerate(zip(deployments, distances_from_ref)):
-        print(f"  S{dep}: {dist:.2f} km")
+        print(f"  {site_code} {dep}: {dist:.2f} km")
     
     # Create figure with two subplots with shared x-axis
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 10), sharex=True)
     
     # Plot 1: Temperature time series
-    ax1.plot(ds.time, ds.sea_water_temperature, 'b-', linewidth=0.8, alpha=0.8)
+    temperature_time, temperature_values, gap_threshold, gap_count = add_line_breaks_for_time_gaps(
+        ds.time.values,
+        ds.sea_water_temperature.values
+    )
+    ax1.plot(temperature_time, temperature_values, 'b-', linewidth=0.8, alpha=0.8)
+    if gap_count:
+        print(
+            f"Debug: Inserted {gap_count} temperature line break(s) for time gaps "
+            f"larger than {gap_threshold}."
+        )
     ax1.set_xlabel('Time', fontsize=12)
     ax1.set_ylabel('Temperature (°C)', fontsize=12)
-    ax1.set_title('Deep Ocean Temperature Time Series (NTAS 12-22)', fontsize=14, fontweight='bold')
+    ax1.set_title(f'Deep Ocean Temperature Time Series ({deployment_label})', fontsize=14, fontweight='bold')
     ax1.grid(True, alpha=0.3)
     ax1.tick_params(axis='both', labelsize=10)
     # Show x-axis labels on top panel too
@@ -78,31 +176,25 @@ def plot_temperature_and_distance(merged_dataset_path, output_path):
         
         for i, point in enumerate(merge_points):
             try:
-                merge_time = pd.to_datetime(point.strip())
+                merge_time = to_naive_datetime(point.strip())
                 print(f"Debug: Plotting merge point {i}: {merge_time}")
                 ax1.axvline(x=merge_time, color='red', linestyle='--', alpha=0.7, linewidth=1)
             except Exception as e:
                 print(f"Error processing merge point {i}: {point}, Error: {e}")
     
-    # Plot 2: Distance from NTAS 12
+    # Plot 2: Distance from the reference deployment
     # Create time points for each deployment location
     deployment_times = []
     
-    # Corrected interpretation: 
-    # S12 starts at dataset beginning
-    # S13 starts at merge point 2, S14 starts at merge point 3, etc.
-    # (Merge point 1 is transition/end of S12 period)
+    # The first deployment starts at dataset beginning.
+    deployment_times.append(to_naive_datetime(ds.time.min().values))
     
-    # S12: Starts at dataset beginning
-    deployment_times.append(pd.to_datetime(ds.time.min().values))
-    
-    # S13-S22: Each starts at merge point (i+1) - skip first merge point
+    # Subsequent deployments start at the remaining merge points.
     if 'merge_point' in ds.attrs and ds.attrs['merge_point'] != 'None':
         merge_points = ds.attrs['merge_point'].split(', ')
-        # Skip first merge point, start from second merge point for S13
         for i in range(1, len(merge_points)):
             try:
-                deployment_times.append(pd.to_datetime(merge_points[i].strip()))
+                deployment_times.append(to_naive_datetime(merge_points[i].strip()))
             except:
                 continue
     
@@ -112,16 +204,24 @@ def plot_temperature_and_distance(merged_dataset_path, output_path):
     print(f"Debug: Found {len(deployments)} deployments")
     print(f"Debug: Deployment mapping:")
     for i, (dep, time) in enumerate(zip(deployments, deployment_times[:len(deployments)])):
-        print(f"  S{dep}: starts at {time}")
+        print(f"  {site_code} {dep}: starts at {time}")
     
     # Ensure arrays match - we should have exactly 11 points for 11 deployments
     deployment_times = deployment_times[:len(deployments)]
     
-    ax2.plot(deployment_times, distances_from_ref, 'ro-', linewidth=2, markersize=8, markerfacecolor='red', 
+    distance_times, distance_values, missing_deployment_gaps = add_line_breaks_for_missing_deployments(
+        deployment_times,
+        distances_from_ref,
+        deployments
+    )
+    if missing_deployment_gaps:
+        print(f"Debug: Inserted {missing_deployment_gaps} distance line break(s) for skipped deployments.")
+
+    ax2.plot(distance_times, distance_values, 'ro-', linewidth=2, markersize=8, markerfacecolor='red', 
             markeredgecolor='darkred', markeredgewidth=1)
     ax2.set_xlabel('Time', fontsize=12)
-    ax2.set_ylabel('Distance from NTAS 12 (km)', fontsize=12)
-    ax2.set_title('Distance from NTAS 12 Deployment Site', fontsize=14, fontweight='bold')
+    ax2.set_ylabel(f'Distance from {site_code} {reference_deployment} (km)', fontsize=12)
+    ax2.set_title(f'Distance from {site_code} {reference_deployment} Deployment Site', fontsize=14, fontweight='bold')
     ax2.grid(True, alpha=0.3)
     ax2.tick_params(axis='both', labelsize=10)
     
@@ -153,7 +253,7 @@ def plot_temperature_and_distance(merged_dataset_path, output_path):
             ha = 'center'
             va = 'bottom'
             
-        ax2.annotate(f'S{deployment.strip()}', 
+        ax2.annotate(f'{site_code}{deployment.strip()}', 
                     (time_point, dist), 
                     textcoords="offset points", 
                     xytext=xytext, 
@@ -177,8 +277,8 @@ def plot_temperature_and_distance(merged_dataset_path, output_path):
     # Print some summary statistics
     print(f"\nSummary Statistics:")
     print(f"Temperature range: {ds.sea_water_temperature.min().values:.3f} to {ds.sea_water_temperature.max().values:.3f} °C")
-    print(f"Time coverage: {pd.to_datetime(ds.time.min().values).strftime('%Y-%m-%d')} to {pd.to_datetime(ds.time.max().values).strftime('%Y-%m-%d')}")
-    print(f"Maximum distance from NTAS 12: {max_dist:.2f} km")
+    print(f"Time coverage: {to_naive_datetime(ds.time.min().values).strftime('%Y-%m-%d')} to {to_naive_datetime(ds.time.max().values).strftime('%Y-%m-%d')}")
+    print(f"Maximum distance from {site_code} {reference_deployment}: {max_dist:.2f} km")
     print(f"Total deployments: {len(deployments)}")
 
 def plot_temperature_only(merged_dataset_path, output_path):
@@ -187,18 +287,24 @@ def plot_temperature_only(merged_dataset_path, output_path):
     """
     # Load the merged dataset
     ds = xr.open_dataset(merged_dataset_path)
+    site_code = ds.attrs.get('site_code', 'NTAS')
     
     # Extract deployment information
     deployments = ds.attrs.get('deployment', '').split(', ')
+    deployment_label = deployment_range_label(site_code, deployments)
     
     # Create single panel figure
     fig, ax = plt.subplots(1, 1, figsize=(14, 6))
     
     # Plot temperature time series
-    ax.plot(ds.time, ds.sea_water_temperature, 'b-', linewidth=0.8, alpha=0.8)
+    temperature_time, temperature_values, _, _ = add_line_breaks_for_time_gaps(
+        ds.time.values,
+        ds.sea_water_temperature.values
+    )
+    ax.plot(temperature_time, temperature_values, 'b-', linewidth=0.8, alpha=0.8)
     ax.set_xlabel('Time', fontsize=12)
     ax.set_ylabel('Temperature (°C)', fontsize=12)
-    ax.set_title('Deep Ocean Temperature Time Series (NTAS 12-22)', fontsize=14, fontweight='bold')
+    ax.set_title(f'Deep Ocean Temperature Time Series ({deployment_label})', fontsize=14, fontweight='bold')
     ax.grid(True, alpha=0.3)
     ax.tick_params(axis='both', labelsize=10)
     
@@ -207,11 +313,11 @@ def plot_temperature_only(merged_dataset_path, output_path):
         merge_points = ds.attrs['merge_point'].split(', ')
         for i, point in enumerate(merge_points):
             try:
-                merge_time = pd.to_datetime(point.strip())
+                merge_time = to_naive_datetime(point.strip())
                 ax.axvline(x=merge_time, color='red', linestyle='--', alpha=0.7, linewidth=1)
                 # Add deployment labels
                 if i < len(deployments) - 1:
-                    ax.text(merge_time, ax.get_ylim()[1] * 0.95, f'NTAS {deployments[i+1]}', 
+                    ax.text(merge_time, ax.get_ylim()[1] * 0.95, f'{site_code} {deployments[i+1]}', 
                             rotation=90, verticalalignment='top', fontsize=8, color='red')
             except Exception as e:
                 print(f"Error processing merge point {i}: {point}, Error: {e}")
@@ -233,5 +339,5 @@ if __name__ == "__main__":
     # Create the temperature and distance plot
     plot_temperature_and_distance(
         merged_data_path, 
-        f'{output_dir}/temperature_and_distance_NTAS12_to_22.png'
+        f'{output_dir}/temperature_and_distance_NTAS11_to_20.png'
     )

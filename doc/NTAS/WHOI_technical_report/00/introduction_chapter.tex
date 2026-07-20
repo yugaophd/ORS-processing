@@ -2,19 +2,19 @@
 
 \section{Project Overview}
 
-Long-term, deep-ocean temperature monitoring is important for determination of ocean heat storage and to provide constraints for climate models. To increase the availability of deep temperature records, OceanSITES coordinated the deployment of deep temperature and conductivity sensors on selected moorings under the Global Ocean Observing System (GOOS). The WHOI Upper Ocean Processes Group (\url{https://uop.whoi.edu}) contributes to this effort through long-term deployments at the Stratus, NTAS, and WHOTS Ocean Reference Stations.
+Long-term, deep-ocean temperature monitoring is important for determination of ocean heat storage and to provide constraints for climate models. To increase the availability of deep temperature records, OceanSITES coordinated the deployment of deep temperature and conductivity sensors on selected moorings under the Global Ocean Observing System (GOOS). With support from the NOAA Global Ocean Monitoring and Observing Program, the WHOI Upper Ocean Processes Group (\url{https://uop.whoi.edu}) contributes to this effort through long-term deployments at the Stratus, NTAS, and WHOTS Ocean Reference Stations.
 
-This report documents the NTAS deep-record processing workflow and data products for deployments 11--20 (2011--2022). The main deliverable is a quality-controlled temperature record that includes uncertainty diagnostics from paired sensors for each deployment. Salinity and pressure data are also presented, but have not been fully quality controlled and should be used with caution.
+This report documents the NTAS deep-record processing workflow and data products for deployments 11--20 (2011--2022). The main deliverable is a quality-controlled temperature record that includes uncertainty diagnostics from paired sensors for each deployment. Salinity and pressure data are also presented, but have not been fully quality-controlled and should be used with caution.
 
 \section{The NTAS Ocean Reference Station}
 
-The Northwest Tropical Atlantic Station (NTAS) is located in the tropical North Atlantic and serves as a long-term air-sea flux and upper-ocean variability reference site. WHOI maintains repeated NTAS mooring deployments that support climate process studies and observing-system continuity.
+The Northwest Tropical Atlantic Station (NTAS) is located in the tropical North Atlantic and serves as a long-term air-sea flux and upper-ocean variability reference site. With support from the NOAA Global Ocean Monitoring and Observing Program, WHOI maintains repeated NTAS mooring deployments that support climate process studies and observing-system continuity.
 
-The mooring carries a broad meteorological and oceanographic sensor suite. The deep recorders analyzed here are installed near the bottom portion of the mooring line, providing a continuous deep-ocean time series across deployments.
+The moorings are deployed in an average water depth of about 5118 m and carry a broad meteorological and oceanographic sensor suite. The deep recorders analyzed here are installed near the bottom portion of the mooring line in approximately 5118 m water depth, providing a continuous deep-ocean time series across deployments. Instrument depths range from 4936 m to 5016 m.
 
 \subsection{Deployment Strategy}
 
-NTAS deployments are serviced repeatedly, with a replacement mooring typically deployed before recovery of the previous system when possible. This strategy can produce overlap periods across adjacent deployments, enabling direct data intercomparisons and merge-point selection.
+NTAS deployments are serviced on a (nominal) annual cycle, with a replacement mooring typically deployed before recovery of the previous system when possible. This strategy can produce overlap periods of hours to days across adjacent deployments, enabling direct data intercomparisons and merge-point selection.
 
 The nominal site remains fixed, with small differences in anchor location from deployment operations. Surveyed anchor positions are summarized in deployment-level metadata and overlap analyses.
 
@@ -45,6 +45,6 @@ Each processed file includes metadata documenting:
     \item Flags indicating data quality following OceanSITES conventions
 \end{itemize}
 
-Temperature is the most mature product in this release and has been quality controlled using robust paired-sensor error diagnostics. Temperature records are stored for each deployment and merged into a continuous time series using deployment overlap to determine the optimal merge point. Data gaps are filled with standard fill values. The merged, quality-controlled temperature data have been published (\href{https://doi.org/10.26027/DATATLTM44}{doi:10.26027/DATATLTM44}) and are publicly available.
+Temperature is the most mature product in this release and has been quality-controlled using robust paired-sensor error diagnostics. Temperature records are stored for each deployment and merged into a continuous time series using deployment overlap to determine the optimal merge point. Data gaps are filled with standard fill values. The merged, quality-controlled temperature data have been published (\href{https://doi.org/10.26027/DATATLTM44}{doi:10.26027/DATATLTM44}) and are publicly available.
 
-Pressure and salinity are plotted and stored as a part of the processing steps, but have not been published due to quality concerns. Pressure records (available for deployments where Seabird SBE-37 sensors were used) show time-dependent drift in the weeks following initial deployment that has not been corrected. Practical and absolute salinity are calculated using TEOS-10 (Thermodynamic Equation Of Seawater 2010). Because the uncorrected pressure drift would impact the salinity calculation, a constant pressure, determined from the water depth and instrument height above bottom, is used in the TEOS equations instead of the measured pressure.
+Pressure and salinity are plotted and stored as part of the processing steps, but have not been published due to quality concerns. Pressure records (available for deployments where Sea-Bird SBE-37 sensors were used) show time-dependent drift in the weeks following initial deployment that has not been corrected. Practical and absolute salinity are calculated using TEOS-10 (Thermodynamic Equation of Seawater 2010). Because the uncorrected pressure drift would impact the salinity calculation, a constant pressure, determined from the water depth and instrument height above bottom, is used in the TEOS equations instead of the measured pressure.

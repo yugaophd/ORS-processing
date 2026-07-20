@@ -3,7 +3,7 @@ OceanSITES Metadata Merger
 
 This module defines which standardized OceanSITES metadata attributes to append
 from source datasets, and which attributes to delete during merging operations.
-Focused specifically on the Stratus Ocean Reference Station datasets.
+Focused specifically on the NTAS Ocean Reference Station datasets.
 """
 
 # Standard OceanSITES attributes to append from source datasets

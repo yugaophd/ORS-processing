@@ -8,7 +8,7 @@ This directory contains the comprehensive WHOI Technical Report for the Stratus 
 
 ### Main Document
 - **`stratus_technical_report.tex`**: Master LaTeX file that compiles all chapters into a single unified technical report
-- **`stratus_technical_report.pdf`**: The compiled PDF (183 pages, 4.3 MB)
+- **`stratus_technical_report.pdf`**: The compiled PDF (192 pages, 53 MB)
 
 ### Individual Deployment Chapters
 Each deployment (12-22) has its own subdirectory containing:
@@ -57,21 +57,20 @@ pdflatex stratusXX_data_report.tex
 1. Title page
 2. Abstract
 3. Table of contents
-4. List of figures
-5. List of tables
 
 ### Main Content
-- **Chapter 1**: Stratus 12 (2012-2014)
-- **Chapter 2**: Stratus 13 (2014-2015)
-- **Chapter 3**: Stratus 14 (2015-2016)
-- **Chapter 4**: Stratus 15 (2016-2017)
-- **Chapter 5**: Stratus 16 (2017-2018)
-- **Chapter 6**: Stratus 17 (2018-2019)
-- **Chapter 7**: Stratus 18 (2019-2020)
-- **Chapter 8**: Stratus 19 (2020-2021)
-- **Chapter 9**: Stratus 20 (2021-2022)
-- **Chapter 10**: Stratus 21 (2022-2023)
-- **Chapter 11**: Stratus 22 (2023-2025)
+- **Chapter 1**: Introduction
+- **Chapter 2**: Stratus 12 (2012-2014)
+- **Chapter 3**: Stratus 13 (2014-2015)
+- **Chapter 4**: Stratus 14 (2015-2016)
+- **Chapter 5**: Stratus 15 (2016-2017)
+- **Chapter 6**: Stratus 16 (2017-2018)
+- **Chapter 7**: Stratus 17 (2018-2019)
+- **Chapter 8**: Stratus 18 (2019-2020)
+- **Chapter 9**: Stratus 19 (2020-2021)
+- **Chapter 10**: Stratus 20 (2021-2022)
+- **Chapter 11**: Stratus 21 (2022-2023)
+- **Chapter 12**: Stratus 22 (2023-2025)
 
 Each chapter follows a consistent structure:
 1. Introduction and Deployment Summary
@@ -105,10 +104,10 @@ Ensure this directory exists and contains all required figures before compilatio
 - `booktabs`: Professional-quality tables
 - `longtable`: Multi-page tables
 
-### Known Issues
-- Some warnings about multiply-defined labels (due to similar figure/table references across chapters)
-- Some undefined control sequences for deployment-specific variables that vary between chapters
-- These warnings do not affect the final PDF output quality
+### Build Notes
+- The master report compiles cleanly with two `pdflatex` passes.
+- The current log contains expected layout warnings for long file paths, variable names, and float placement.
+- The current log does not contain missing-file errors, undefined control sequences, unresolved references, or multiply-defined labels.
 
 ## Maintenance
 
@@ -136,7 +135,8 @@ Woods Hole, MA 02543
 yugao@whoi.edu
 
 ## Date
-Generated: November 2025
+Generated: May 2026
 
 ## Version History
+- v1.1 (May 2026): Corrected report metadata and build notes after source cleanup
 - v1.0 (November 2025): Initial compilation of deployments 12-22
