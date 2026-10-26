@@ -114,6 +114,31 @@ Output: figures in `img/STRATUS/` and `img/NTAS/`
 
 ---
 
+## SP30M Products
+
+Create conductivity, practical/absolute salinity, and pressure products by removing
+only `sea_water_temperature` from the current `*_TSP30M.nc` files:
+
+```bash
+python src/create_sp30m.py
+python src/create_sp30m.py /path/to/OS_SITE_dates_GRD_TSP30M.nc
+```
+
+The default sources are in `../NTAS/merged_NTAS/` and
+`../STRATUS/merged_stratus/`, relative to this repository. Outputs are saved beside
+their sources as `*_SP30M.nc`. Use `--overwrite` to replace existing outputs.
+The script verifies that retained values, dimensions, data types, and variable
+attributes match the source exactly. Original T30M and TSP30M files are unchanged.
+Conductivity, salinity, and pressure retain the source data-quality caveats;
+subsetting does not apply additional quality control.
+
+The final packaging workflow in `src/address_deep_ts_comments.py` includes all
+three products in each site's DOI-named ZIP, README, and manifest. Processed files
+and ZIPs remain in the shared data archive, not Git. See
+[the sharing email draft](doc/updated_files_email.md) for the current filenames.
+
+---
+
 ## Technical Reports
 
 LaTeX source for the WHOI technical reports is in `doc/`. Each report has a master `.tex` file that `\input`s per-deployment chapters. Compile with:

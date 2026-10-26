@@ -4,19 +4,26 @@
 # For each pair of adjacent deployments, find the time window where both
 # deployments' instruments were recording simultaneously, then check whether
 # the mean difference between instruments is no larger than the natural
-# temporal variability (std) of each sensor over that overlap window.
+# temporal variability (std) of each sensor over that overlap window. Potential
+# temperature is calculated for each sample before averaging or differencing.
 #
 # NTAS15 is skipped: the deployment returned no usable data (see merge_15_missing.py).
 
 import os
+import gsw
 import numpy as np
 import pandas as pd
 import xarray as xr
 
 DATA_ROOT = '/mnt/VAST_UOP/ORS/DEEP_TS/NTAS'
 DOC_ROOT = '/mnt/VAST_UOP/ORS/DEEP_TS/ORS-processing/doc/NTAS'
-VARIABLE = 'sea_water_temperature'
+VARIABLE = 'potential_temperature_referenced_to_5000_dbar'
+TEMPERATURE_VARIABLE = 'sea_water_temperature'
+PRACTICAL_SALINITY_VARIABLE = 'sea_water_practical_salinity'
+THETA_VARIABLE = 'potential_temperature'
+REFERENCE_PRESSURE_DBAR = 5000.0
 RESAMPLE_FREQ = '30min'  # matches the sampling grid used to build the merged NTAS dataset
+COMPARISON_INTERVAL_MINUTES = pd.Timedelta(RESAMPLE_FREQ).total_seconds() / 60
 
 # deployment number -> list of instrument serial numbers
 DEPLOYMENTS = {
@@ -31,6 +38,19 @@ DEPLOYMENTS = {
     20: ['11392', '11393'],
 }
 
+# Serials selected for the merged NTAS temperature product.
+PRIMARY_SENSORS = {
+    11: '2324',
+    12: '1877',
+    13: '2323',
+    14: '11392',
+    16: '11392',
+    17: '11380',
+    18: '11392',
+    19: '12246',
+    20: '11392',
+}
+
 DEPLOYMENT_ORDER = [11, 12, 13, 14, 16, 17, 18, 19, 20]
 
 
@@ -38,30 +58,69 @@ def cleaned_path(dep, serial):
     return os.path.join(DATA_ROOT, f'ntas{dep}', 'v1', f'NTAS{dep}_{serial}_cleaned.nc')
 
 
-def load_series(dep, serial, variable=VARIABLE):
+def load_series(dep, serial):
     ds = xr.open_dataset(cleaned_path(dep, serial))
-    da = ds[variable].resample(time=RESAMPLE_FREQ).mean()
-    da['time'] = da.time.dt.round(RESAMPLE_FREQ)  # snap to a common grid, as done when building the merged dataset
+    temperature = ds[TEMPERATURE_VARIABLE]
+    practical_salinity = ds[PRACTICAL_SALINITY_VARIABLE]
+    latitude = float(ds.attrs['latitude_anchor_survey'])
+    longitude = float(ds.attrs['longitude_anchor_survey'])
+    depth = float(ds.attrs['instrument_depth'])
+    pressure = gsw.p_from_z(-depth, latitude)
+    absolute_salinity = gsw.SA_from_SP(
+        practical_salinity.values,
+        pressure,
+        longitude,
+        latitude,
+    )
+    theta = xr.DataArray(
+        gsw.pt_from_t(
+            absolute_salinity,
+            temperature.values,
+            pressure,
+            REFERENCE_PRESSURE_DBAR,
+        ),
+        coords=temperature.coords,
+        dims=temperature.dims,
+        name=THETA_VARIABLE,
+        attrs={
+            'long_name': 'potential temperature at 5000 dbar',
+            'units': 'degree_C',
+        },
+    )
+    series = xr.Dataset({
+        TEMPERATURE_VARIABLE: temperature,
+        PRACTICAL_SALINITY_VARIABLE: practical_salinity,
+        THETA_VARIABLE: theta,
+    })
+    series = series.resample(time=RESAMPLE_FREQ).mean()
+    series['time'] = series.time.dt.round(RESAMPLE_FREQ)
+    series.load()
     ds.close()
-    return da
+    return series
 
 
-def compare_pair(dep0, dep1, variable=VARIABLE):
+def compare_pair(dep0, dep1, serials0=None, serials1=None):
     """Compare overlap-period statistics between all instrument combos of two adjacent deployments."""
     rows = []
-    for serial0 in DEPLOYMENTS[dep0]:
-        da0 = load_series(dep0, serial0, variable)
-        for serial1 in DEPLOYMENTS[dep1]:
-            da1 = load_series(dep1, serial1, variable)
+    serials0 = DEPLOYMENTS[dep0] if serials0 is None else serials0
+    serials1 = DEPLOYMENTS[dep1] if serials1 is None else serials1
+    for serial0 in serials0:
+        series0 = load_series(dep0, serial0)
+        for serial1 in serials1:
+            series1 = load_series(dep1, serial1)
 
-            overlap_start = max(da0.time.min().values, da1.time.min().values)
-            overlap_end = min(da0.time.max().values, da1.time.max().values)
+            overlap_start = max(series0.time.min().values, series1.time.min().values)
+            overlap_end = min(series0.time.max().values, series1.time.max().values)
 
             row = {
                 'deployment0': f'NTAS{dep0}', 'serial0': serial0,
                 'deployment1': f'NTAS{dep1}', 'serial1': serial1,
                 'overlap_start': None, 'overlap_end': None,
-                'n_points': 0, 'mean_diff': np.nan,
+                'overlap_hours': 0.0, 'comparison_interval_minutes': COMPARISON_INTERVAL_MINUTES,
+                'n_points': 0,
+                'mean_temperature0': np.nan, 'mean_temperature1': np.nan,
+                'theta0': np.nan, 'theta1': np.nan,
+                'theta_diff': np.nan,
                 'std0': np.nan, 'std1': np.nan,
                 'within_uncertainty': None,
             }
@@ -70,26 +129,44 @@ def compare_pair(dep0, dep1, variable=VARIABLE):
                 rows.append(row)
                 continue
 
-            sel0 = da0.sel(time=slice(overlap_start, overlap_end))
-            sel1 = da1.sel(time=slice(overlap_start, overlap_end))
+            sel0 = series0.sel(time=slice(overlap_start, overlap_end))
+            sel1 = series1.sel(time=slice(overlap_start, overlap_end))
             sel0, sel1 = xr.align(sel0, sel1, join='inner', copy=False)
-            diff = (sel0 - sel1).dropna('time')
+            valid = (
+                sel0[TEMPERATURE_VARIABLE].notnull()
+                & sel0[PRACTICAL_SALINITY_VARIABLE].notnull()
+                & sel0[THETA_VARIABLE].notnull()
+                & sel1[TEMPERATURE_VARIABLE].notnull()
+                & sel1[PRACTICAL_SALINITY_VARIABLE].notnull()
+                & sel1[THETA_VARIABLE].notnull()
+            )
 
-            if diff.time.size == 0:
+            if valid.sum().item() == 0:
                 rows.append(row)
                 continue
 
-            mean_diff = float(diff.mean())
-            std0 = float(sel0.std())
-            std1 = float(sel1.std())
+            sel0_valid = sel0.where(valid, drop=True)
+            sel1_valid = sel1.where(valid, drop=True)
+            mean_temperature0 = float(sel0_valid[TEMPERATURE_VARIABLE].mean())
+            mean_temperature1 = float(sel1_valid[TEMPERATURE_VARIABLE].mean())
+            theta0 = float(sel0_valid[THETA_VARIABLE].mean())
+            theta1 = float(sel1_valid[THETA_VARIABLE].mean())
+            theta_diff = theta0 - theta1
+            std0 = float(sel0_valid[TEMPERATURE_VARIABLE].std())
+            std1 = float(sel1_valid[TEMPERATURE_VARIABLE].std())
             # "within uncertainty" if the mean bias is smaller than each sensor's own natural variability
-            within = bool(abs(mean_diff) < std0 and abs(mean_diff) < std1)
+            within = bool(abs(theta_diff) < std0 and abs(theta_diff) < std1)
 
             row.update({
                 'overlap_start': pd.Timestamp(overlap_start),
                 'overlap_end': pd.Timestamp(overlap_end),
-                'n_points': int(diff.time.size),
-                'mean_diff': mean_diff,
+                'overlap_hours': (pd.Timestamp(overlap_end) - pd.Timestamp(overlap_start)).total_seconds() / 3600,
+                'n_points': int(valid.sum().item()),
+                'mean_temperature0': mean_temperature0,
+                'mean_temperature1': mean_temperature1,
+                'theta0': theta0,
+                'theta1': theta1,
+                'theta_diff': theta_diff,
                 'std0': std0,
                 'std1': std1,
                 'within_uncertainty': within,
@@ -104,20 +181,23 @@ def write_latex_table(df, path, variable=VARIABLE):
 
     with open(path, 'w') as f:
         f.write('\\begin{table}[h]\n\\centering\n')
-        f.write('\\begin{tabular}{|c|c|c|c|c|c|c|}\n\\hline\n')
-        f.write('Deployment 0 & SN0 & Deployment 1 & SN1 & Mean Diff & Std0 / Std1 & Within Uncertainty \\\\\n\\hline\n')
+        f.write('\\begin{tabular}{|c|c|c|c|c|c|c|c|c|}\n\\hline\n')
+        f.write('Deployment 0 & SN0 & Deployment 1 & SN1 & Mean Temp0 / Temp1 & Theta0 / Theta1 & Theta Diff & Std0 / Std1 & Within Uncertainty \\\\\n\\hline\n')
         for _, row in df.iterrows():
-            if pd.isna(row['mean_diff']):
+            if pd.isna(row['theta_diff']):
                 f.write(f"{esc(row['deployment0'])} & {esc(row['serial0'])} & {esc(row['deployment1'])} & "
-                        f"{esc(row['serial1'])} & \\multicolumn{{3}}{{c|}}{{no overlap}} \\\\\n")
+                        f"{esc(row['serial1'])} & \\multicolumn{{5}}{{c|}}{{no overlap}} \\\\\n")
             else:
                 verdict = 'Yes' if row['within_uncertainty'] else 'No'
                 f.write(f"{esc(row['deployment0'])} & {esc(row['serial0'])} & {esc(row['deployment1'])} & "
-                        f"{esc(row['serial1'])} & {row['mean_diff']:.4f} & "
+                        f"{esc(row['serial1'])} & {row['mean_temperature0']:.4f} / {row['mean_temperature1']:.4f} & "
+                        f"{row['theta0']:.4f} / {row['theta1']:.4f} & "
+                        f"{row['theta_diff']:.4f} & "
                         f"{row['std0']:.4f} / {row['std1']:.4f} & {verdict} \\\\\n")
         f.write('\\hline\n\\end{tabular}\n')
         f.write(f"\\caption{{Overlap-period statistics between adjacent NTAS deployments for {variable.replace('_', ' ')}. "
-                 "The mean difference is compared against each sensor's own temporal standard deviation during the overlap window.}\n")
+               "Theta uses each instrument's deployed depth and measured practical salinity. "
+             "The theta difference is compared against each sensor's measured-temperature standard deviation during the overlap window.}\n")
         f.write('\\end{table}\n')
 
 
@@ -132,7 +212,10 @@ def main():
             else:
                 verdict = 'OK' if row['within_uncertainty'] else 'EXCEEDS UNCERTAINTY'
                 print(f"  SN{row['serial0']} vs SN{row['serial1']}: "
-                      f"mean_diff={row['mean_diff']:.4f}, std0={row['std0']:.4f}, "
+                      f"mean_temp0={row['mean_temperature0']:.4f}, "
+                      f"mean_temp1={row['mean_temperature1']:.4f}, "
+                      f"theta0={row['theta0']:.4f}, theta1={row['theta1']:.4f}, "
+                      f"theta_diff={row['theta_diff']:.4f}, std0={row['std0']:.4f}, "
                       f"std1={row['std1']:.4f}, n={row['n_points']} -> {verdict}")
 
     df = pd.DataFrame(all_rows)
@@ -144,6 +227,24 @@ def main():
     tex_path = os.path.join(DOC_ROOT, 'NTAS_overlap_stats.tex')
     write_latex_table(df, tex_path)
     print(f'Saved LaTeX table to {tex_path}')
+
+    primary_rows = []
+    for dep0, dep1 in zip(DEPLOYMENT_ORDER[:-1], DEPLOYMENT_ORDER[1:]):
+        primary_rows.extend(compare_pair(
+            dep0,
+            dep1,
+            [PRIMARY_SENSORS[dep0]],
+            [PRIMARY_SENSORS[dep1]],
+        ))
+    primary_df = pd.DataFrame(primary_rows)
+
+    primary_csv_path = os.path.join(DOC_ROOT, 'NTAS_overlap_stats_primary_sensor.csv')
+    primary_df.to_csv(primary_csv_path, index=False)
+    print(f'Saved primary-sensor summary to {primary_csv_path}')
+
+    primary_tex_path = os.path.join(DOC_ROOT, 'NTAS_overlap_stats_primary_sensor.tex')
+    write_latex_table(primary_df, primary_tex_path)
+    print(f'Saved primary-sensor LaTeX table to {primary_tex_path}')
 
     return df
 
